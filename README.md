@@ -1,12 +1,23 @@
 # news
 
 One platform-neutral news service for the whole OpenPak network, plus
-Switch BCAT delivery (PRD: `prds/news-bcat-prd.md`). An article is written
-once — targeted by **platforms, titles, regions, languages** (empty = all)
-— and delivered through every channel a player has: the Switch News
-channel (BCAT topics), the website, companion apps and title servers via
-the read API. Per-title BCAT datasets (schedules, seasonal content) are
-Switch-only by nature and live with the Switch renderer.
+emulator delivery of per-title Switch BCAT data (PRD:
+`prds/news-bcat-prd.md` as corrected by `docs/spike-nb00-review.md`). An
+article is written once — targeted by **platforms, titles, regions,
+languages** (empty = all) — and delivered through every channel a player
+has: the website, companion apps and title servers via the read API.
+Per-title BCAT datasets (schedules, seasonal content) are Switch-only by
+nature and are delivered to emulators and to the LayeredFS placement flow.
+
+**Console finding (NB-00, see `docs/spike-nb00.md` +
+`docs/spike-nb00-review.md`):** the Switch's topics/list/data payloads are
+signed, optionally encrypted **bcat content containers** — RSA-2048 with a
+Nintendo key held in the sysmodule. Without Nintendo's private key (and
+refusing console-side patches), console News and console BCAT are **NO-GO**.
+This repo therefore serves no bcat-hostname console routes; contract
+request NB-1 is withdrawn. What reaches consoles is dataset placement on
+the SD by the setup homebrew (LayeredFS), driven by this repo's delivery
+contract.
 
 License: AGPL-3.0-only (`LICENSE`, verbatim from gnu.org). Go 1.26,
 module `github.com/openpak/news`.
@@ -17,15 +28,17 @@ module `github.com/openpak/news`.
 cmd/news               the binary: authoring gRPC, read API, renderer, metrics
 cmd/newsctl            operator CLI (stopgap authoring + acceptance journeys)
 internal/content       model, audience targeting, read API (NB-03, NB-07)
-internal/store         PostgreSQL implementation (pgx), embedded migrations
+internal/store         PostgreSQL implementation (pgx), embedded migrations,
+                       Postgres-backed integration tests (NEWS_TEST_DATABASE)
 internal/objects       content-addressed object store (images, dataset files)
 internal/grpcapi       authoring gRPC (NB-2, NB-4), operator-key gated
 internal/metrics       metrics/pprof listener (ports.md +2)
-render/                renderer contract (NB-08): audience in, console-format out
-render/switchbcat      Switch channel: topics/list/data handlers + BCAT datasets,
-                       emulator delivery (NB-01/02/05/06). The adapter mounts this.
+render/                renderer contract (NB-08): audience in, channel format out
+render/switchbcat      Switch channel: emulator delivery of BCAT datasets
+                       (NB-05) + delivery-manifest renderer; emulator-only
 proto/, gen/           news.v1 authoring gRPC
-docs/spike-nb00.md     NB-00 spike finding: what the console verifies (go/no-go)
+docs/spike-nb00.md     NB-00 finding (corrected) — console surfaces NO-GO
+docs/spike-nb00-review.md  owner review with the citations (authoritative)
 ```
 
 Renderers never hold content of their own: `render/switchbcat` reads the
@@ -46,17 +59,14 @@ Read API (public, website / apps / title servers, NB-07):
 - `GET /v1/articles?platform=switch&title=<id>&region=FR&language=en-US`
   — JSON with `ETag` / `Last-Modified` / 304s.
 
-Switch renderer (mounted by the Switch adapter on the bcat hosts,
-contract request NB-1; standalone HTTP for dev/emulator):
+Emulator delivery (NB-05, the Switch channel's live surface; mounted by
+the adapter on its emulator API, ports.md 20070, or served standalone):
 
-- `GET /api/nx/v1/titles/<title>/topics?c[]=FR&c[]=GB` — News topics (NB-01)
-- `GET /v1/list` — titles with served datasets (NB-02)
-- `GET /api/nx/v1/titles/<title>/manifest` and `GET /<title>/<path>` — dataset
-- `GET /images/<key>` — article images
-- Emulator delivery (NB-05): `GET /api/emulator/v1/bcat/titles`,
-  `/titles/<title>` (manifest with absolute file URLs),
-  `/titles/<title>/files/<path>` — Citron maps `path` into its LayeredFS
-  BCAT folder.
+- `GET /api/emulator/v1/bcat/titles` — titles with served datasets
+- `GET /api/emulator/v1/bcat/titles/<title>` — delivery manifest
+  (paths, sizes, sha256, validity window, absolute file URLs)
+- `GET /api/emulator/v1/bcat/titles/<title>/files/<path>` — dataset file
+- `GET /images/<key>` — article images referenced by the read API
 
 All responses carry `ETag`, `Last-Modified`, `Cache-Control` and answer
 `If-None-Match` / `If-Modified-Since` (NB-06).
@@ -64,6 +74,19 @@ All responses carry `ETag`, `Last-Modified`, `Cache-Control` and answer
 Ports follow `../ports.md` block 20040: HTTP `:20040`, gRPC `:20041`,
 metrics/pprof `:20042` (`NEWS_HTTP_ADDR`, `NEWS_GRPC_ADDR`,
 `NEWS_METRICS_ADDR`).
+
+## LayeredFS placement contract (N2')
+
+The setup homebrew is the console-side consumer. For each title id it
+fetches the delivery manifest and places each file, by its `path` field,
+into the title's BCAT directory on the SD:
+
+- `path` is relative, slash-separated, no `..` (validated server-side);
+- file integrity is the manifest `sha256` (`X-Content-SHA256` on fetch);
+- a dataset is superseded by a newer sealed one whose `valid_from` is
+  later; `valid_until` past its end means drop the files;
+- placement is outside the bcat delivery cache, so no container signing
+  is involved.
 
 ## Run
 
@@ -93,67 +116,67 @@ newsctl -key ... dataset put -dataset <id> -path event/season.bin -file season.b
 newsctl -key ... dataset seal -dataset <id>
 ```
 
-### Seeding a first article (N1 journey)
-
-An "all platforms" article appears on every title's topics request:
-
-```sh
-newsctl ... article create -slug hello -platforms all \
-  -locale "en-US=Hello from OpenPak" -body-text "News is live."
-newsctl ... article publish -id <id>
-curl 'localhost:20040/api/nx/v1/titles/0100ed9024eb8000/topics?c[]=FR&c[]=GB'
-```
-
-### Seeding a dataset (N2 journey)
+### N1' journey — emulator delivery end to end
 
 ```sh
 newsctl ... dataset create -title 0100ed9024eb8000 -until 2027-01-01T00:00:00Z
 newsctl ... dataset put -dataset <id> -path event/season.bin -file season.bin
 newsctl ... dataset seal -dataset <id>
-curl localhost:20040/v1/list && curl localhost:20040/0100ed9024eb8000/event/season.bin
+curl localhost:20040/api/emulator/v1/bcat/titles
+curl localhost:20040/api/emulator/v1/bcat/titles/0100ed9024eb8000
+curl -o season.bin localhost:20040/api/emulator/v1/bcat/titles/0100ed9024eb8000/files/event/season.bin
+```
+
+Gate: Citron, pointed at the emulator API, consumes the dataset (article
++ data). Emulators take the BCAT passphrase from the game and verify no
+container signature — this is the path that works.
+
+### Seeding a first article (website / apps / title servers)
+
+```sh
+newsctl ... article create -slug hello -platforms all \
+  -locale "en-US=Hello from OpenPak" -body-text "News is live."
+newsctl ... article publish -id <id>
+curl 'localhost:20040/v1/articles?platform=switch'
 ```
 
 Datasets are immutable once sealed; a new dataset with a later
 `valid_from` supersedes the old one. Only sealed datasets with a validity
 window covering now are served.
 
-## Adapter mounting (contract request NB-1)
+## Adapter relationship
 
-The Switch adapter (21000) mounts the renderer; `news` never opens
-console-facing ports itself (ports.md rule 2):
+The Switch adapter hosts the emulator delivery routes on ports.md 20070 by
+mounting the same package (`render/switchbcat`):
 
 ```go
 import "github.com/openpak/news/render/switchbcat"
 
 svc := switchbcat.NewService(reader, publicBaseURL, logger)
-mux.Handle("/", svc.Mux()) // on the three bcat hostnames
-// add bcat-*-lp1.cdn.nintendo.net to the certificate SAN list
+mux.Handle("/api/emulator/v1/bcat/", http.StripPrefix("/api/emulator/v1/bcat", svc.Mux()))
+// Renderer (NB-08): svc.Renderer() renders the delivery manifest per title.
 ```
 
-`svc.Renderer()` implements `render.Renderer` (NB-08) if the adapter wants
-the channel payload directly.
-
-## Wire shapes and the spike
-
-The topics/list/manifest JSON shapes are the console's format; the exact
-field names are being confirmed on hardware (NB-00). The shapes live in
-one file each — `render/switchbcat/topics.go`, `data.go` — so the N1/N2
-observation protocol in `docs/spike-nb00.md` can adjust them fast. Every
-topics request is logged with its raw query for that comparison.
+No console-facing hostnames are mounted; NB-1 (bcat hostnames + SANs) is
+withdrawn per the NB-00 finding.
 
 ## Operations
 
 - Health: `GET /healthz` (renderer mux), gRPC health service.
 - Metrics: `GET :20042/metrics`; pprof under `/debug/pprof/`.
-- Logs: slog text on stderr; the store never logs secrets (there are none:
-  the service holds no player data).
+- Logs: slog text on stderr; the service holds no player data.
 - Database: Postgres; connection `NEWS_DATABASE_URL`, pool max 8.
+- Tests: unit tests always run; store SQL tests run against
+  `NEWS_TEST_DATABASE` (ports.md 23001, wired in CI as a service).
 - CI: `go vet ./...` and `go test -race ./...` green (`.github/workflows/ci.yml`).
-- Integration (Postgres) checks run as unit-level fakes today; the store
-  SQL is exercised by the owner journey in this README — run it against a
-  scratch database before each deploy.
 
-## Status (PRD §10)
+## Status (PRD §10, as corrected)
 
-- N0 spike finding written (`docs/spike-nb00.md`) — owner gate pending.
-- N1/N2/N3 tooling ready (seed journeys above); hardware gates owner-run.
+- N0 spike finding written and **corrected** — console surfaces NO-GO
+  (owner review accepted as the record).
+- N1' emulator delivery end to end on Citron (article + dataset) —
+  tooling ready; hardware gate owner-run.
+- N2' LayeredFS placement contract for the setup homebrew — contract
+  defined above; implementation lands with the homebrew.
+- N3 authoring pages (website agent), read API + emulator delivery — in.
+- N4 SpotPass renderer — unchanged (Wii U/3DS, when the first title lands).

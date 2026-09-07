@@ -7,21 +7,12 @@ import (
 	"github.com/openpak/news/internal/content"
 )
 
-// Wire shapes for the list and data hosts (NB-02) and the emulator
-// delivery (NB-05). NOTE (NB-00 spike): the console-taught formats replace
-// these shapes on hardware evidence; each is one small function.
-
-type listResponse struct {
-	Format int      `json:"format"`
-	Titles []string `json:"titles"`
-}
-
-func listJSON(titles []string) ([]byte, error) {
-	if titles == nil {
-		titles = []string{}
-	}
-	return json.Marshal(listResponse{Format: 1, Titles: titles})
-}
+// Wire shapes for the emulator delivery (NB-05). NOTE (NB-00): the stock
+// console formats (bcat content containers, routes /api/nx/v1/...) are
+// NO-GO for us — signed with Nintendo's key; see docs/spike-nb00-review.md.
+// These JSON shapes are the OpenPak emulator/placement contract only. The
+// console's documented list route (/api/nx/v1/list/<name>) is recorded as
+// evidence and deliberately not served.
 
 type manifestResponse struct {
 	Format     int           `json:"format"`
@@ -39,7 +30,7 @@ type manifestDir struct {
 }
 
 // manifestJSON renders the current dataset. fileURLPrefix empty means
-// host-relative data-host URLs ("/<title>/<path>"); otherwise absolute
+// host-relative data URLs ("/<title>/<path>"); otherwise absolute
 // emulator URLs.
 func manifestJSON(titleID string, ds *content.Dataset, fileURLPrefix string) ([]byte, error) {
 	m := manifestResponse{

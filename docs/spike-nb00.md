@@ -1,72 +1,44 @@
-# NB-00 Research spike — what the console verifies on News and BCAT payloads
+# NB-00 Research spike — finding (CORRECTED 2026-09-07)
 
-Status: finding written 2026-09-07, hardware observation **pending owner
-run** (the N0 gate is the owner accepting the go/no-go below). This spike is
-blocking per PRD §7; N1/N2 execute the observation protocol it defines.
+The original conclusion of this spike ("TLS is the verification boundary",
+GO for console News and console BCAT) was **wrong** and is reversed by the
+owner-side review with citations: see
+[spike-nb00-review.md](spike-nb00-review.md). This file is kept as the
+spike's record; the review is authoritative.
 
-## Evidence available today
+## Corrected finding
 
-1. Console log lines (2026-09-07, owner's CFW Switch with the OpenPak CA
-   and the third-party setup redirect active):
-   `GET bcat-topics-lp1.cdn.nintendo.net/api/nx/v1/titles/<title>/topics?c[]=FR&c[]=GB`
-   fires on title launch for Outbound (`0100ED9024EB8000`) and a system
-   title. Our side returned 404; the console logged it and moved on. Two
-   facts follow:
-   - the console **reaches our TLS endpoint** through the adapter and
-     accepts the OpenPak certificate for these hosts;
-   - the request is **unauthenticated** at the HTTP layer (no token
-     headers reported), filtered by country only.
-2. Public documentation (Kinnay wiki, "BCAT-Servers"): the three bcat hosts
-   (`bcat-list`, `bcat-topics`, `bcat-data` under `cdn.nintendo.net`)
-   serve JSON/plain files over plain TLS. The documentation describes no
-   payload signatures, no certificate pinning beyond TLS, and no per-file
-   signature scheme. The topics route is the documented
-   `/api/nx/v1/titles/<title>/topics` shape. The Wii U-era News NEX
-   protocol is not involved.
-3. Titles consume BCAT content through the bcat sysmodule, which stores
-   what it downloaded into savedata and hands it to the game. Nintendo's
-   own data was produced by their internal tools; the consumer-side
-   validation a title performs on dataset contents is **title code**, not
-   system code — we can only observe it per title (that is the N2 gate).
+The topics response is not JSON. Per Kinnay (BCAT-Servers) it is a **bcat
+content container**; per switchbrew (BCAT Content Container) that is a
+0x120-byte header with an RSA-2048 signature at 0x20 and optional AES-CTR
+encryption keyed from the title's passphrase (NACP 0x3100) plus a secret
+held by the bcat sysmodule, with the RSA modulus selected by the sysmodule's
+`production_mode` setting — a Nintendo key we do not have. The News
+downloader (BCAT cmd 30500) requires the same encrypted, signed container.
+Therefore no payload we emit can be parsed by a stock CFW console, and the
+project's standing rule excludes console-side patches.
 
-## Findings
+The documented list route is `/api/nx/v1/list/<name>` (not `/v1/list`),
+recorded here as evidence only.
 
-- **TLS is the verification boundary** for the topics/list/data surfaces as
-  far as every available source shows. A CFW console with the OpenPak CA
-  in its trust store accepts our answers — it already accepted the
-  endpoint, certificate and request shape (evidence 1).
-- The console retries politely on failure (404 did not break title launch),
-  which makes iteration safe: we can serve a candidate shape, watch the
-  adapter's `!! UNHANDLED` / access log and the console's behaviour, and
-  adjust the single-file wire shapes (`topics.go`, `data.go`).
-- Unknown: whether the console applies schema-level validation to topics
-  (field names, types, topic id format) and whether specific titles
-  hash-check their dataset files. Both are observable, neither is
-  documented, and neither can be resolved without hardware — that is the
-  spike's residual risk, owned by N1/N2, not by this document.
+## Go/no-go (final, per the review)
 
-## Go/no-go per surface
+| Surface | Decision |
+| --- | --- |
+| Console News (topics) | **NO-GO** (needs Nintendo's private key or a patch) |
+| Console per-title BCAT via bcat hosts | **NO-GO** (same container, same key) |
+| Per-title data on console via LayeredFS placement (setup homebrew, SD) | **GO** — outside this repo's console handlers (N2' placement contract) |
+| Emulator delivery (NB-05) | **GO** — Citron takes the passphrase from the game and verifies nothing |
+| Read API for website / apps / title servers (NB-07) | **GO** — console-independent |
 
-| Surface | Decision | Basis |
-| --- | --- | --- |
-| News (per-title topics) | **GO** | TLS-only verification per all sources; console already reaches and accepts our endpoint (evidence 1). Wire shape is the spike's adjustable part. |
-| Per-title BCAT (list/data) | **GO** | Same TLS boundary; Kinnay documents the routes. Title-side dataset validation is per-title and observed at N2. |
-| Console-side patches | **NO-GO** (standing) | PRD §11: the project refuses custom sysmodules. If N1 shows schema-level rejection we iterate shapes; only a sysmodule-level signature check would kill News, and no source shows one. |
+## Consequences applied in this repo
 
-## Observation protocol for N1/N2 (owner-run, ~15 min)
-
-1. Start `news` with the seeded article (see README "Seeding a first
-   article") and the adapter mounting `render/switchbcat` on the three
-   bcat hosts with full request logging.
-2. Launch the target title on the console. Capture:
-   - adapter log: exact method, path, query (`c[]` values), headers;
-   - console: does the News surface show the article?
-3. If the article does not render: capture the console's follow-up
-   requests (image fetches? retries? alternate route?) and diff the served
-   shape against what the console requested. Adjust `topics.go` only.
-4. N2: seal a one-file dataset for the title (README "Seeding a dataset"),
-   relaunch the title, observe `bcat-list`/`bcat-data` fetches in the
-   adapter log and the in-title behaviour.
-
-Output of each step goes into `docs/` as evidence notes, linked from the
-capability ledger.
+- The invented console-format handlers were removed; `render/switchbcat`
+  now serves only the emulator delivery endpoints and implements
+  `render.Renderer` as the delivery manifest renderer. Contract request
+  NB-1 (adapter mounts handlers on the bcat hostnames) is **withdrawn**.
+- Milestones N1/N2 are replaced by N1' (emulator delivery end to end on
+  Citron) and N2' (LayeredFS placement contract for the setup homebrew);
+  see README "Status".
+- Store SQL is covered by a Postgres-backed integration test
+  (`NEWS_TEST_DATABASE`, port 23001 per ports.md).

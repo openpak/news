@@ -1,17 +1,14 @@
-// Package switchbcat is the Switch channel renderer (PRD NB-08): it turns
-// the platform-neutral article stream into the console's BCAT topics
-// format, and serves the Switch-only per-title BCAT datasets (list, data,
-// images) plus the emulator delivery (NB-05).
+// Package switchbcat is the Switch channel (PRD NB-08). After the NB-00
+// finding (docs/spike-nb00-review.md) the console-facing bcat surfaces are
+// NO-GO: the topics/list/data payloads on a stock console are signed,
+// encrypted bcat content containers we cannot produce. This package is
+// therefore **emulator-only**: it serves the per-title BCAT datasets to
+// Citron's LayeredFS flow (NB-05) and implements render.Renderer by
+// rendering the delivery manifest for a title audience.
 //
-// The Switch adapter mounts Mux on the three bcat hostnames (contract
-// request NB-1):
-//
-//	bcat-topics-lp1.cdn.nintendo.net  GET /api/nx/v1/titles/<title>/topics?c[]=FR&c[]=GB
-//	bcat-list-lp1.cdn.nintendo.net    GET /v1/list
-//	bcat-data-lp1.cdn.nintendo.net    GET /<title>/<path>, /images/<key>, manifest route
-//
-// The wire shapes live in topics.go and data.go, one file each, so the
-// NB-00 spike (what the console actually accepts) can adjust them quickly.
+// Console reachability is handled outside this repo: the setup homebrew
+// places dataset files on the SD (LayeredFS), driven by the same manifest
+// contract — see README "LayeredFS placement contract" (N2').
 package switchbcat
 
 import (
@@ -19,7 +16,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -46,8 +42,10 @@ func NewService(src Source, publicBaseURL string, log *slog.Logger) *Service {
 	return &Service{src: src, publicBaseURL: strings.TrimRight(publicBaseURL, "/"), log: log}
 }
 
-// Renderer implements render.Renderer (NB-08): audience in, console-format
-// out. The topics JSON body is the Switch News channel delivery format.
+// Renderer implements render.Renderer (NB-08): audience in, channel
+// format out. The Switch channel's delivery format is the BCAT dataset
+// manifest for the queried title (consumed by the emulator and by the
+// setup homebrew; never by a stock console).
 type Renderer struct{ svc *Service }
 
 func (s *Service) Renderer() render.Renderer { return Renderer{s} }
@@ -56,11 +54,14 @@ func (r Renderer) Name() string { return "switch-bcat" }
 
 func (r Renderer) Render(ctx context.Context, q content.AudienceQuery) (render.Payload, error) {
 	q.Platform = "switch"
-	articles, mod, err := r.svc.src.Articles(ctx, q)
+	if q.TitleID == "" {
+		return render.Payload{}, errors.New("switch-bcat renderer needs a title id")
+	}
+	ds, mod, err := r.svc.src.CurrentDataset(ctx, q.TitleID)
 	if err != nil {
 		return render.Payload{}, err
 	}
-	body, err := topicsJSON(articles, q, r.svc.publicBaseURL)
+	body, err := manifestJSON(q.TitleID, ds, r.svc.publicBaseURL+"/api/emulator/v1/bcat/titles/"+q.TitleID+"/files/")
 	if err != nil {
 		return render.Payload{}, err
 	}
@@ -72,8 +73,10 @@ func (r Renderer) Render(ctx context.Context, q content.AudienceQuery) (render.P
 	}, nil
 }
 
-// Mux returns the handlers the adapter mounts on the three bcat hostnames.
-// One mux serves all of them: the routes are path-distinct.
+// Mux returns the emulator-delivery handlers (NB-05). The adapter mounts
+// them on its emulator API (ports.md 20070); the standalone news HTTP
+// server serves the same routes for development. There are deliberately
+// no bcat-hostname console routes left.
 func (s *Service) Mux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -81,18 +84,12 @@ func (s *Service) Mux() *http.ServeMux {
 		w.Write([]byte("ok"))
 	})
 
-	// topics host: per-title topics with country/language filters (NB-01).
-	mux.HandleFunc("GET /api/nx/v1/titles/{title}/topics", s.handleTopics)
-
-	// list host: titles with served datasets (NB-02).
-	mux.HandleFunc("GET /v1/list", s.handleList)
-
-	// data host: per-title dataset files, images, manifest (NB-02, NB-06).
+	// Article images: referenced by the read API (NB-07) with absolute
+	// URLs on this host; host-neutral, consumed by website/apps/emulator.
 	mux.HandleFunc("GET /images/{key}", s.handleImage)
-	mux.HandleFunc("GET /api/nx/v1/titles/{title}/manifest", s.handleManifest)
-	mux.HandleFunc("GET /{title}/{path...}", s.handleDataFile)
 
-	// emulator delivery (NB-05): same datasets for Citron's LayeredFS.
+	// Emulator delivery (NB-05): per-title BCAT datasets for Citron's
+	// LayeredFS flow.
 	mux.HandleFunc("GET /api/emulator/v1/bcat/titles", s.handleEmuTitles)
 	mux.HandleFunc("GET /api/emulator/v1/bcat/titles/{title}", s.handleEmuManifest)
 	mux.HandleFunc("GET /api/emulator/v1/bcat/titles/{title}/files/{path...}", s.handleEmuFile)
@@ -101,71 +98,6 @@ func (s *Service) Mux() *http.ServeMux {
 }
 
 // ---------- handlers ----------
-
-func (s *Service) handleTopics(w http.ResponseWriter, r *http.Request) {
-	titleID := strings.ToLower(r.PathValue("title"))
-	q := content.AudienceQuery{Platform: "switch", TitleID: titleID}
-	qs := r.URL.Query()
-	q.Regions = qs["c[]"]
-	q.Language = first(qs, "l", "lang", "language", "l[]")
-
-	// The console teaches the schema (NB-00): log every topics request
-	// with its raw query so the spike can compare served vs accepted.
-	s.log.Info("bcat topics request", "title", titleID, "query", r.URL.RawQuery,
-		"regions", q.Regions, "language", q.Language)
-
-	payload, err := s.Renderer().Render(r.Context(), q)
-	if err != nil {
-		s.log.Error("topics render failed", "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	s.serveBytes(w, r, payload.Body, payload.ContentType, payload.ETag, payload.ModTime)
-}
-
-func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
-	titles, mod, err := s.src.Titles(r.Context())
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	body, err := listJSON(titles)
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	s.serveBytes(w, r, body, "application/json", etag(body), mod)
-}
-
-func (s *Service) handleManifest(w http.ResponseWriter, r *http.Request) {
-	titleID := strings.ToLower(r.PathValue("title"))
-	ds, mod, err := s.src.CurrentDataset(r.Context(), titleID)
-	if err != nil {
-		s.dataErr(w, err)
-		return
-	}
-	body, err := manifestJSON(titleID, ds, "")
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	s.serveBytes(w, r, body, "application/json", etag(body), mod)
-}
-
-func (s *Service) handleDataFile(w http.ResponseWriter, r *http.Request) {
-	titleID := strings.ToLower(r.PathValue("title"))
-	path := r.PathValue("path")
-	if content.ValidateFilePath(path) != nil {
-		http.NotFound(w, r)
-		return
-	}
-	ds, _, err := s.src.CurrentDataset(r.Context(), titleID)
-	if err != nil {
-		s.dataErr(w, err)
-		return
-	}
-	s.serveDatasetFile(w, r, ds, path)
-}
 
 func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
@@ -181,8 +113,6 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	}
 	http.ServeContent(w, r, "", mod, rc)
 }
-
-// ---------- emulator delivery (NB-05) ----------
 
 func (s *Service) handleEmuTitles(w http.ResponseWriter, r *http.Request) {
 	titles, mod, err := s.src.Titles(r.Context())
@@ -266,15 +196,6 @@ func (s *Service) dataErr(w http.ResponseWriter, err error) {
 		return
 	}
 	http.Error(w, "internal error", http.StatusInternalServerError)
-}
-
-func first(q url.Values, keys ...string) string {
-	for _, k := range keys {
-		if v := q.Get(k); v != "" {
-			return v
-		}
-	}
-	return ""
 }
 
 func contentTypeOf(name string) string {

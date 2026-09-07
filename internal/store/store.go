@@ -181,9 +181,10 @@ func (s *Store) Articles(ctx context.Context, q content.AudienceQuery) ([]conten
 
 func (s *Store) Titles(ctx context.Context) ([]string, time.Time, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT DISTINCT title_id, created_at FROM datasets
+		SELECT title_id, max(created_at) FROM datasets
 		WHERE sealed AND valid_from <= now()
-		  AND (valid_until IS NULL OR valid_until > now())`)
+		  AND (valid_until IS NULL OR valid_until > now())
+		GROUP BY title_id`)
 	if err != nil {
 		return nil, time.Time{}, err
 	}

@@ -8,6 +8,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      # ports.md 23001: Postgres for integration tests.
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: news
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: news_test
+        ports:
+          - 23001:5432
+        options: >-
+          --health-cmd "pg_isready -U news"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -15,4 +30,6 @@ jobs:
           go-version: '1.26.x'
       - run: go vet ./...
       - run: go test -race ./...
+        env:
+          NEWS_TEST_DATABASE: postgres://news:secret@localhost:23001/news_test
       - run: go build ./...
