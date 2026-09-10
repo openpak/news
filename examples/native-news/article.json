@@ -1,0 +1,9 @@
+{
+  "news_id": 1909261001,
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "title": "Welcome to OpenPak News",
+  "body": "This original sample demonstrates a title, article text and images for the native Switch News reader.",
+  "footer": "Published by OpenPak.",
+  "lifetime_days": 7
+}

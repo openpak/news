@@ -1,0 +1,10 @@
+{
+  "news_id": 2609100301,
+  "title": "Getting your console ready for OpenPak News",
+  "body": "Three things put OpenPak News on your console. First, re-run the OpenPak installer and re-select your network: its DNS redirects now include the News host, and older installs do not have that entry. Second, install both News patches from the probe: the verification-key patch with the R button, and the token patch with D-pad Right. Third, reboot after each change; patches apply at boot. Keep OpenPak DNS enabled whenever you read News, because the patches are not hostname-selective and Nintendo endpoints will not answer these requests.",
+  "footer": "OpenPak Help — ask us anything.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 30,
+  "art": { "motif": "buoy", "hue": 18 }
+}

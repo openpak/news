@@ -168,9 +168,15 @@ func TestDatasetLifecycleSQL(t *testing.T) {
 	ctx := context.Background()
 	const title = "0100ed9024eb8000"
 
-	d := &content.Dataset{TitleID: title, ValidFrom: time.Now().UTC().Add(-time.Minute)}
+	from0 := time.Now().UTC().Add(-time.Minute).Truncate(time.Millisecond)
+	d := &content.Dataset{TitleID: title, ValidFrom: from0}
 	if err := s.CreateDataset(ctx, d); err != nil {
 		t.Fatal(err)
+	}
+	// CreateDataset must return the scheduled valid_from, not created_at:
+	// the operator is told when the dataset actually goes live.
+	if !d.ValidFrom.Equal(from0) {
+		t.Fatalf("valid_from round trip: got %s want %s", d.ValidFrom, from0)
 	}
 	if err := s.SealDataset(ctx, d.ID); !errors.Is(err, content.ErrValidation) {
 		t.Fatalf("empty seal: %v", err)
@@ -243,6 +249,16 @@ func TestImageByKeySQL(t *testing.T) {
 	}
 	if _, _, err := s.ImageByKey(ctx, "nope"); !errors.Is(err, content.ErrNotFound) {
 		t.Fatalf("missing image: %v", err)
+	}
+
+	// Attaching an image changes the read API payload, so it must move
+	// updated_at — that is the Last-Modified every cache validates on.
+	after, err := s.Article(ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.UpdatedAt.After(a.UpdatedAt) {
+		t.Fatalf("updated_at not touched by AttachImage: %s <= %s", after.UpdatedAt, a.UpdatedAt)
 	}
 }
 

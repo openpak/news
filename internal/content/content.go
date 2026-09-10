@@ -212,7 +212,7 @@ func ValidateSwitchTitleID(s string) error {
 
 func ValidatePlatform(p string) error {
 	if p == TokenAll || !reToken.MatchString(p) {
-		return errVal("platform must be a short lowercase token or \"all\": " + p)
+		return errVal("platform must be a short lowercase token, and \"all\" is not stored as one: " + p)
 	}
 	return nil
 }

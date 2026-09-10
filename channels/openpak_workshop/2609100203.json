@@ -1,0 +1,10 @@
+{
+  "news_id": 2609100203,
+  "title": "Two small patches, honestly explained",
+  "body": "Two console patches make this experiment possible, and both install from the probe itself. The first swaps the BCAT verification key for OpenPak's public key, so our signatures verify; it is a key replacement, not a check bypass, and it affects game BCAT too. The second skips an authentication token that Nintendo's edge servers issue before News downloads. Without it the download failed before it ever reached our server, which is how we found the dependency. Both patches are pinned to one system build, reversible from the probe, and scoped to this experiment.",
+  "footer": "OpenPak Workshop — how it works.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 14,
+  "art": { "motif": "spark", "hue": 260 }
+}

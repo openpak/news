@@ -1,5 +1,20 @@
 # news
 
+Start native Switch work with the [creation guide](docs/native-news-authoring-guide.md),
+[editable sample](examples/native-news/README.md), [channel lineup
+seed](channels/README.md), and [agent handoff](docs/native-news-agent-handoff.md).
+
+**Patched-console experiment (2026-09-09):** the owner has authorized and
+installed a build-specific OpenPak BCAT verification-key patch. An isolated
+remote CDN now serves original signed/encrypted catalog fixtures for testing
+with probe v0.19 ZL. After a separate News edge-token omission patch and reboot,
+native retrieval succeeds and reports 155 decoded catalog bytes. Exported
+plaintext comparison, Find Channels parsing and subscriptions remain pending.
+The UI has requested OpenPak catalog/icon/detail. Server v004 also serves an
+empty online_archives container; the channel-page retest is pending.
+See [experiment and rollback](docs/native-news-container.md).
+The earlier server-only NO-GO below still applies to unpatched consoles.
+
 One platform-neutral news service for the whole OpenPak network, plus
 emulator delivery of per-title Switch BCAT data (PRD:
 `prds/news-bcat-prd.md` as corrected by `docs/spike-nb00-review.md`). An
@@ -14,13 +29,19 @@ nature and are delivered to emulators and to the LayeredFS placement flow.
 signed, optionally encrypted **bcat content containers** — RSA-2048 with a
 Nintendo key held in the sysmodule. Without Nintendo's private key (and
 refusing console-side patches), console News and console BCAT are **NO-GO**.
-This repo therefore serves no bcat-hostname console routes; contract
+At the time of that server-only spike, this repo served no bcat-hostname console routes; contract
 request NB-1 is withdrawn. What reaches consoles is dataset placement on
 the SD by the setup homebrew (LayeredFS), driven by this repo's delivery
 contract.
 
 License: AGPL-3.0-only (`LICENSE`, verbatim from gnu.org). Go 1.26,
 module `github.com/openpak/news`.
+
+**Native News follow-up (2026-09-07):** a separate local IPC route,
+`newsPostLocalNews`, is now under investigation for a foreground homebrew
+helper. The later v0.12 test demonstrated local article rendering; subscribable
+channels and automatic delivery remain unverified. See
+[the evidence and hardware experiment](docs/native-news-reopen.md).
 
 ## Layout (PRD §8)
 

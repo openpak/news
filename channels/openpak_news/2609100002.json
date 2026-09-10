@@ -1,0 +1,10 @@
+{
+  "news_id": 2609100002,
+  "title": "OpenPak content decodes on your console",
+  "body": "Your console can now read what we write. On 9 September a patched Switch downloaded our signed, encrypted News catalog through the console's own downloader and decoded it successfully, the first time OpenPak-authored content cleared native signature and decryption checks end to end. Earlier the same week, an article posted locally rendered fully in the News app, text and images included. Server-delivered articles are the next step: the channel page, subscriptions and automatic delivery are being validated right now.",
+  "footer": "OpenPak — open network services for your console.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 14,
+  "art": { "motif": "rays", "hue": 160 }
+}

@@ -1,0 +1,36 @@
+{
+  "channels": [
+    {
+      "topic_id": "openpak_news",
+      "name": "OpenPak News",
+      "publisher": "OpenPak",
+      "description": "Announcements and milestones from the OpenPak network.",
+      "important": false,
+      "icon": { "motif": "beacon", "hue": 212 }
+    },
+    {
+      "topic_id": "openpak_games",
+      "name": "OpenPak Games",
+      "publisher": "OpenPak",
+      "description": "Supported games, server features and title-specific updates.",
+      "important": false,
+      "icon": { "motif": "pad", "hue": 145 }
+    },
+    {
+      "topic_id": "openpak_workshop",
+      "name": "OpenPak Workshop",
+      "publisher": "OpenPak",
+      "description": "How OpenPak works: development notes from the team.",
+      "important": false,
+      "icon": { "motif": "gear", "hue": 275 }
+    },
+    {
+      "topic_id": "openpak_help",
+      "name": "OpenPak Help",
+      "publisher": "OpenPak",
+      "description": "Setup, troubleshooting and practical guides.",
+      "important": false,
+      "icon": { "motif": "buoy", "hue": 18 }
+    }
+  ]
+}

@@ -377,3 +377,42 @@ func TestNotFoundMapping(t *testing.T) {
 }
 
 var _ = errors.New
+
+// A malformed audience value must be rejected, never normalized away —
+// dropping it turns targeted news into news for everyone.
+func TestAudienceNeverFailsOpen(t *testing.T) {
+	s := testService()
+	ctx := authCtx(opKey)
+	base := func(aud *newsv1.Audience) *newsv1.CreateArticleRequest {
+		return &newsv1.CreateArticleRequest{
+			Slug:     "probe",
+			Audience: aud,
+			Locales:  []*newsv1.ArticleLocale{{Language: "en-US", Title: "t", Body: "b"}},
+		}
+	}
+	for _, c := range []struct {
+		name string
+		aud  *newsv1.Audience
+	}{
+		{"bad region", &newsv1.Audience{Regions: []string{"FRA"}}},
+		{"bad platform", &newsv1.Audience{Platforms: []string{"Switch!"}}},
+		{"bad language", &newsv1.Audience{Languages: []string{"english"}}},
+		{"bad title id", &newsv1.Audience{TitleIds: []string{"NOT/A/TITLE"}}},
+	} {
+		if _, err := s.CreateArticle(ctx, base(c.aud)); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%s: got %v, want InvalidArgument (audience would have widened to all)", c.name, err)
+		}
+	}
+
+	// "all" on any dimension still normalizes to empty (= all), any case.
+	a, err := s.CreateArticle(ctx, base(&newsv1.Audience{
+		Platforms: []string{"all"}, Regions: []string{"ALL"}, Languages: []string{"All"},
+	}))
+	if err != nil {
+		t.Fatalf("all token rejected: %v", err)
+	}
+	if len(a.GetAudience().GetPlatforms()) != 0 || len(a.GetAudience().GetRegions()) != 0 ||
+		len(a.GetAudience().GetLanguages()) != 0 {
+		t.Errorf("all token not normalized: %+v", a.GetAudience())
+	}
+}

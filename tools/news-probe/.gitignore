@@ -1,0 +1,8 @@
+*.elf
+*.nacp
+*.nro
+report.txt
+*.msgpack
+*.sqlite
+source/test_article.h
+source/cleanup_articles.h

@@ -1,0 +1,3 @@
+FROM scratch
+COPY newscdn /newscdn
+ENTRYPOINT ["/newscdn"]

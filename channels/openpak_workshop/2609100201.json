@@ -1,0 +1,10 @@
+{
+  "news_id": 2609100201,
+  "title": "Anatomy of a signed News container",
+  "body": "Everything your console downloads from OpenPak News arrives as a BCAT container: a 288-byte header, then the payload. The header carries a fresh random counter block, an encrypted body and an RSA-2048 signature computed over the plaintext, so the console verifies what it read, not just what it received. Our encoder builds exactly that shape: PKCS#1 signatures with SHA-256, AES-CTR encryption, and no platform secrets anywhere in the source. The same container format serves the catalog, channel details and, once validated, articles.",
+  "footer": "OpenPak Workshop — how it works.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 14,
+  "art": { "motif": "gear", "hue": 275 }
+}

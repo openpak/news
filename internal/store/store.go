@@ -463,18 +463,25 @@ func (s *Store) loadLocalesImages(ctx context.Context, a *content.Article) error
 	return irows.Err()
 }
 
+// AttachImage adds an image and touches the article: updated_at is the
+// read API's Last-Modified, so it must move when the payload changes.
 func (s *Store) AttachImage(ctx context.Context, articleID string, img *content.ArticleImage) error {
 	return s.pool.QueryRow(ctx, `
-		INSERT INTO article_images (article_id, language, sort, object_key, file_name, size, sha256, md5)
-		VALUES ($1, $2, COALESCE((SELECT MAX(sort) + 1 FROM article_images WHERE article_id = $1), 0), $3, $4, $5, $6, $7)
-		RETURNING id`,
+		WITH ins AS (
+			INSERT INTO article_images (article_id, language, sort, object_key, file_name, size, sha256, md5)
+			VALUES ($1, $2, COALESCE((SELECT MAX(sort) + 1 FROM article_images WHERE article_id = $1), 0), $3, $4, $5, $6, $7)
+			RETURNING id
+		), touch AS (
+			UPDATE articles SET updated_at = now() WHERE id = $1
+		)
+		SELECT id FROM ins`,
 		articleID, img.Language, img.Key, img.FileName, img.Size, img.SHA256, img.MD5).Scan(&img.ID)
 }
 
 func (s *Store) CreateDataset(ctx context.Context, d *content.Dataset) error {
 	return s.pool.QueryRow(ctx, `
 		INSERT INTO datasets (title_id, valid_from, valid_until)
-		VALUES ($1, $2, $3) RETURNING id, created_at`,
+		VALUES ($1, $2, $3) RETURNING id, valid_from`,
 		d.TitleID, d.ValidFrom, d.ValidUntil).Scan(&d.ID, &d.ValidFrom)
 }
 

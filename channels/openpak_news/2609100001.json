@@ -1,0 +1,10 @@
+{
+  "news_id": 2609100001,
+  "title": "Welcome to the OpenPak channel lineup",
+  "body": "OpenPak News now has company. Four channels join the lineup: News for announcements and milestones, Games for the titles we support, Workshop for how it all works, and Help for setup and answers. Each channel has its own icon, so you can spot it at a glance and read what matters to you. The lineup is rolling out through our hardware testing program, and this catalog is its first step: if you can read this card, the whole chain from our servers to your News app is working.",
+  "footer": "Published by the OpenPak team.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 14,
+  "art": { "motif": "beacon", "hue": 212 }
+}

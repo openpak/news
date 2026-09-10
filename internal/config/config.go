@@ -15,7 +15,7 @@ type Config struct {
 	MetricsAddr   string // metrics/pprof (ports.md: +2)
 	OperatorKey   string // required, shared credential for the authoring gRPC
 	ObjectsDir    string // filesystem object store root
-	PublicBaseURL string // console-visible base URL for images, e.g. https://bcat-data-lp1.cdn.nintendo.net
+	PublicBaseURL string // base URL clients fetch images and dataset files from (ports.md 20070)
 	MaxImageSize  int64  // 8 MiB
 	MaxFileSize   int64  // 64 MiB
 }
@@ -40,7 +40,7 @@ func Load() (*Config, error) {
 		missing = append(missing, "NEWS_OPERATOR_KEY (>=32 chars)")
 	}
 	if c.PublicBaseURL == "" {
-		missing = append(missing, "NEWS_PUBLIC_BASE_URL (console-visible base URL, e.g. https://bcat-data-lp1.cdn.nintendo.net)")
+		missing = append(missing, "NEWS_PUBLIC_BASE_URL (base URL clients fetch images and dataset files from, e.g. http://localhost:20070)")
 	}
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("missing env: %s", strings.Join(missing, ", "))

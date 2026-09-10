@@ -7,6 +7,7 @@ package grpcapi
 import (
 	"context"
 	"crypto/md5"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -61,7 +62,11 @@ func authorized(ctx context.Context, key string) bool {
 	for _, k := range []string{"authorization", "x-operator-key"} {
 		for _, v := range md.Get(k) {
 			v = strings.TrimSpace(v)
-			if v == key || strings.EqualFold(v, "bearer "+key) {
+			if len(v) >= 7 && strings.EqualFold(v[:7], "bearer ") {
+				v = strings.TrimSpace(v[7:])
+			}
+			// Constant time: the key is a shared secret compared per RPC.
+			if subtle.ConstantTimeCompare([]byte(v), []byte(key)) == 1 {
 				return true
 			}
 		}
@@ -72,9 +77,13 @@ func authorized(ctx context.Context, key string) bool {
 // ---------- articles ----------
 
 func (s *Service) CreateArticle(ctx context.Context, req *newsv1.CreateArticleRequest) (*newsv1.Article, error) {
+	aud, err := audienceFrom(req.GetAudience())
+	if err != nil {
+		return nil, invalid(err)
+	}
 	a := &content.Article{
 		Slug:     req.GetSlug(),
-		Audience: audienceFrom(req.GetAudience()),
+		Audience: aud,
 		Locales:  localesFrom(req.GetLocales()),
 	}
 	if err := validateNew(a); err != nil {
@@ -91,38 +100,14 @@ func (s *Service) UpdateArticle(ctx context.Context, req *newsv1.UpdateArticleRe
 	in := req.GetAudience()
 	// Explicit replacement: a request audience replaces every dimension it
 	// lists; the "all" token normalizes to empty (all).
-	platforms := normalizeAll(in.GetPlatforms())
-	titleIDs := normalizeAll(in.GetTitleIds())
-	regions, err := content.ValidateRegions(in.GetRegions())
+	aud, err := audienceFrom(in)
 	if err != nil {
 		return nil, invalid(err)
-	}
-	for _, r := range regions {
-		if r == strings.ToUpper(content.TokenAll) {
-			regions = nil
-			break
-		}
-	}
-	languages := normalizeAll(in.GetLanguages())
-	for _, p := range platforms {
-		if err := content.ValidatePlatform(p); err != nil {
-			return nil, invalid(err)
-		}
-	}
-	for _, t := range titleIDs {
-		if err := content.ValidateTitleID(t); err != nil {
-			return nil, invalid(err)
-		}
-	}
-	for _, l := range languages {
-		if err := content.ValidateLanguage(l); err != nil {
-			return nil, invalid(err)
-		}
 	}
 
 	if err := s.writer.UpdateArticle(ctx, req.GetId(), func(a *content.Article) error {
 		if in != nil {
-			a.Audience = content.Audience{Platforms: platforms, TitleIDs: titleIDs, Regions: regions, Languages: languages}
+			a.Audience = aud
 		}
 		for _, l := range localesFrom(req.GetLocales()) {
 			replaced := false
@@ -359,29 +344,10 @@ func invalid(err error) error {
 	return status.Error(codes.InvalidArgument, err.Error())
 }
 
+// validateNew checks the parts audienceFrom does not: slug and locales.
 func validateNew(a *content.Article) error {
 	if err := content.ValidateSlug(a.Slug); err != nil {
 		return err
-	}
-	for _, p := range a.Audience.Platforms {
-		if err := content.ValidatePlatform(p); err != nil {
-			return err
-		}
-	}
-	for _, t := range a.Audience.TitleIDs {
-		if err := content.ValidateTitleID(t); err != nil {
-			return err
-		}
-	}
-	for _, r := range a.Audience.Regions {
-		if _, err := content.ValidateRegions([]string{r}); err != nil {
-			return err
-		}
-	}
-	for _, l := range a.Audience.Languages {
-		if err := content.ValidateLanguage(l); err != nil {
-			return err
-		}
 	}
 	if len(a.Locales) == 0 {
 		return errors.New("at least one locale is required")
@@ -401,35 +367,46 @@ func validateNew(a *content.Article) error {
 // otherwise the list passes through.
 func normalizeAll(list []string) []string {
 	for _, v := range list {
-		if v == content.TokenAll {
+		if strings.EqualFold(v, content.TokenAll) {
 			return nil
 		}
 	}
 	return list
 }
 
-func audienceFrom(in *newsv1.Audience) content.Audience {
+// audienceFrom normalizes the explicit "all" token to empty ("all") on
+// every dimension and validates what is left. An invalid value is an
+// error, never a silent widening of the audience.
+func audienceFrom(in *newsv1.Audience) (content.Audience, error) {
 	if in == nil {
-		return content.Audience{}
+		return content.Audience{}, nil
 	}
-	norm := func(list []string) []string {
-		for _, v := range list {
-			if v == content.TokenAll {
-				return nil
-			}
-		}
-		return list
+	a := content.Audience{
+		Platforms: normalizeAll(in.GetPlatforms()),
+		TitleIDs:  normalizeAll(in.GetTitleIds()),
+		Languages: normalizeAll(in.GetLanguages()),
 	}
-	regions, err := content.ValidateRegions(in.GetRegions())
+	regions, err := content.ValidateRegions(normalizeAll(in.GetRegions()))
 	if err != nil {
-		regions = nil
+		return content.Audience{}, err
 	}
-	return content.Audience{
-		Platforms: norm(in.GetPlatforms()),
-		TitleIDs:  norm(in.GetTitleIds()),
-		Regions:   regions,
-		Languages: norm(in.GetLanguages()),
+	a.Regions = regions
+	for _, p := range a.Platforms {
+		if err := content.ValidatePlatform(p); err != nil {
+			return content.Audience{}, err
+		}
 	}
+	for _, t := range a.TitleIDs {
+		if err := content.ValidateTitleID(t); err != nil {
+			return content.Audience{}, err
+		}
+	}
+	for _, l := range a.Languages {
+		if err := content.ValidateLanguage(l); err != nil {
+			return content.Audience{}, err
+		}
+	}
+	return a, nil
 }
 
 func localesFrom(in []*newsv1.ArticleLocale) []content.ArticleLocale {

@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenPak signed News container hardware experiment
+After=openpak-nx-baas.service
+[Container]
+ContainerName=openpak-news-experiment
+Image=localhost/openpak-news-experiment:v004
+Network=openpak.network
+Volume=%h/openpak/deploy/news-experiment/cdn-v001:/fixtures:ro,Z
+Volume=%h/openpak/deploy/news-experiment/tls:/tls:ro,Z
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+Exec=-listen :20040 -dir /fixtures -tls-cert /tls/server.pem -tls-key /tls/server.key -fallback https://openpak-nx-baas:21000 -fallback-ca /tls/ca.pem -fallback-server-name bcat-topics-lp1.cdn.nintendo.net
+[Service]
+Restart=on-failure
+[Install]
+WantedBy=default.target
