@@ -1,5 +1,7 @@
 # Creating OpenPak channels and News articles
 
+**Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
+
 Updated 2026-09-10; hardware evidence through 2026-09-09, HOS 22.5.0 with
 Atmosphere on the owner's emuMMC.
 Start here for current behavior; the older spike documents are historical.

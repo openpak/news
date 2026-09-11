@@ -1,5 +1,7 @@
 # Native News signed-container experiment, 2026-09-09
 
+**Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
+
 ## Channel lineup seed prepared; multi-channel fixture CDN built (2026-09-10, local only)
 
 The OpenPak channel lineup is now authored as source files:

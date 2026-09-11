@@ -2,9 +2,14 @@
   "news_id": 2609100102,
   "title": "Stardew Valley farms go multiplayer",
   "body": "Three-player farms are working on our Stardew Valley server. Hosting, joining and playing together all succeed, with rejoin after disconnect, host leave and stale-seat cleanup verified on 7 September. Players sign in with their OpenPak identity: the server checks the token your console carries and reads your friend list through the account core, so invites work between linked accounts. The next step is an end-to-end run of that identity path on a linked console.",
-  "footer": "OpenPak Games — playable, not promised.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 14,
-  "art": { "motif": "grid", "hue": 100 }
+  "art": {
+    "motif": "levels"
+  }
 }

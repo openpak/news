@@ -1,5 +1,7 @@
 # news
 
+**Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](docs/native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
+
 Start native Switch work with the [creation guide](docs/native-news-authoring-guide.md),
 [editable sample](examples/native-news/README.md), [channel lineup
 seed](channels/README.md), and [agent handoff](docs/native-news-agent-handoff.md).

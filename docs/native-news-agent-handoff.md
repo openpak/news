@@ -1,5 +1,7 @@
 # Native News agent handoff
 
+**Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
+
 Updated 2026-09-10; hardware evidence through 2026-09-09. Work from `~/REPOS/Openpak/news`, its own Git
 repository. The parent directory is not a Git repository. Inspect existing
 uncommitted work before editing; several tasks have changes here.

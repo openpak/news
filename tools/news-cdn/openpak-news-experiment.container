@@ -3,9 +3,9 @@ Description=OpenPak signed News container hardware experiment
 After=openpak-nx-baas.service
 [Container]
 ContainerName=openpak-news-experiment
-Image=localhost/openpak-news-experiment:v004
+Image=localhost/openpak-news-experiment:v006
 Network=openpak.network
-Volume=%h/openpak/deploy/news-experiment/cdn-v001:/fixtures:ro,Z
+Volume=%h/openpak/deploy/news-experiment/cdn-v003:/fixtures:ro,Z
 Volume=%h/openpak/deploy/news-experiment/tls:/tls:ro,Z
 ReadOnly=true
 NoNewPrivileges=true

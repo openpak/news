@@ -2,9 +2,14 @@
   "news_id": 2609100103,
   "title": "How a game earns its place here",
   "body": "Game support at OpenPak is earned, not promised. A title starts as research: we document what its servers must say, with a source for every claim. Then a test rig proves the important paths, and only a title that survives playtesting gets called supported. Today Outbound and Stardew Valley are in playable testing on emulators. Mario Kart 8 Deluxe and Smash Bros. servers exist but have never seen a console, and Splatoon 3 is early research with its requirements written down. We update these pages as each title moves.",
-  "footer": "OpenPak Games — playable, not promised.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 14,
-  "art": { "motif": "steps", "hue": 55 }
+  "art": {
+    "motif": "podium"
+  }
 }

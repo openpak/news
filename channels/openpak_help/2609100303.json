@@ -2,9 +2,14 @@
   "news_id": 2609100303,
   "title": "Where articles live, and when they leave",
   "body": "News articles are stored on your console, not streamed fresh every time. When an article's validity ends, the console removes it during its own housekeeping: in our tests an expired card disappeared by itself within a day, though instant deletion is not guaranteed. Retiring a published article works the same way. We serve an expired replacement with the same identity, and the console does the rest in its own time. Until article delivery is verified end to end, this page describes tested behaviour, and we will update it as subscriptions and refresh delivery land.",
-  "footer": "OpenPak Help — ask us anything.",
+  "footer": "OpenPak Help \u2014 ask us anything.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 30,
-  "art": { "motif": "waves", "hue": 200 }
+  "art": {
+    "motif": "refresh"
+  }
 }

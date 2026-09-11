@@ -1,5 +1,7 @@
 # OpenPak channel lineup seed
 
+**Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](../docs/native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
+
 The editable source of the OpenPak News channels for the native Switch News
 experiment: four channels and their opening articles. Everything here is
 original — text written from our own evidence, artwork drawn by
@@ -13,25 +15,29 @@ content-store renderer), and this seed is file-based authoring until native
 channel contracts exist (none do today — see the
 [handoff](../docs/native-news-agent-handoff.md)).
 
-## Status: prepared, reviewed locally, not deployed
+## Status
+
+**Deployed:** v006/cdn-v003 (publication pinned 2026-09-10T19:13:51Z) serves
+the four-channel catalog, populated archives, twelve summaries and linked
+full articles. See [delivery, evidence and rollback](../docs/native-news-article-delivery.md).
+
+**Local, pending owner review:** the 2026-09-11 artwork rebrand — channel
+icons rebuilt from the official OpenPak mark and per-article scene banners
+(the previous abstract shapes are what v006 currently serves). Built and
+signed locally; not in any image on the server. Deploying it is the next
+image/fixtures round (v007/cdn-v004) using the documented procedure.
 
 What hardware has already proven (evidence in
-[`docs/native-news-container.md`](../docs/native-news-container.md)):
+[`docs/native-news-container.md`](../docs/native-news-container.md) and
+[`docs/native-news-article-delivery.md`](../docs/native-news-article-delivery.md)):
 
 | Capability | Evidence |
 | --- | --- |
 | Local article renders natively (title, body, images) | Probe v0.12, owner-confirmed, payload matched byte-for-byte |
 | Native catalog download + decode of an OpenPak-signed container | Probe v0.19 ZL, 155 decoded bytes, 2026-09-09 |
 | Console requests per-channel detail/icon/archives | Server logs 18:51, 20:14–20:15 UTC |
-| Empty-archives channel response shape (`{na_required, data_list}`) | v004 fixture built from the 22.5 parser; **UI acceptance still pending** |
-
-What this seed adds, pending owner review and hardware validation: a
-four-channel catalog, per-channel signed fixtures on dynamically derived
-routes, and the article payload set for the delivery-path work. **No article
-is served or delivered yet**: the archive `data_list` entry format has not
-been traced, so every archives response stays empty and the signed article
-containers are prepared artifacts only. Nothing in this tree claims to be on
-a console.
+| Archive entry schema (news_id, version, default_language, languages[].summary_url) | Owner-local qlaunch parser trace, 2026-09-10; served by v006, **console acceptance pending** |
+| Summary card + full-article routes | Served by v006; **native rendering pending** |
 
 ## Layout
 
@@ -58,15 +64,25 @@ and stable ids are what make scoped update-in-place possible.
 Article file fields: `title` (≤ 100 chars), `body` (**one paragraph**,
 ≤ 1200 chars — newline rendering is unverified in the native reader),
 `footer` (≤ 80), `language` + `supported_languages` (`en-GB` style, the
-article language must be listed), `lifetime_days` (1..30), `art`
-(`motif` + `hue` 0..359). Motifs: `beacon`, `pad`, `gear`, `buoy`, `waves`,
-`rays`, `orbit`, `grid`, `steps`, `spark`.
+article language must be listed), `lifetime_days` (1..30) and `art`
+(`motif`). Article motifs are gaming scenes built on the official mark:
+`mark`, `burst`, `horizon`, `pad`, `levels`, `podium`, `gear`, `orbit`,
+`wrench`, `power`, `question`, `refresh`. Channel icons reproduce the
+OpenPak logo (`mark`) or swap its centre dot for a glyph:
+`mark-pad`, `mark-gear`, `mark-question`.
 
 ## Build
 
 Deterministic: with `--published` pinned, a rerun is byte-identical, and
 stale artifacts of retired/renumbered articles are pruned — a rerun updates
-existing seed content in place, never duplicating.
+existing seed content in place, never duplicating. Pruning is conservative:
+the build drops a `.newsseed-managed` marker and prunes only paths recorded
+in the previous `manifest.json` (plus its own `retired/` tree). A directory
+newsseed did not create is never modified — still, give `--out` a directory
+of its own. A directory from before markers existed (or a foreign one) is
+rejected outright: use a fresh `--out`, or pass `--adopt` once to migrate
+it, which sweeps its previously generated seed artifacts (known names only)
+before rebuilding.
 
 ```sh
 go run ./cmd/newsseed --list                                   # inventory
@@ -76,10 +92,12 @@ go run ./cmd/newsseed --out /tmp/openpak-news-seed \
 
 Outputs, relative to the out dir: `catalog.msgpack` (all four channel
 records), `<topic>/detail.msgpack`, `<topic>/icon.jpg` (70×70),
-`<topic>/archives.msgpack`, `<topic>/<id>/{article.msgpack,card.jpg,hero.jpg,
-article-expired.msgpack}` (card 358×201, hero 800×364, embedded in the
-article too), `retired/<topic>/<id>/article.msgpack` (expired replacement
-for anything retired), and `manifest.json` (inventory + SHA-256 of every
+`<topic>/archives.msgpack` (populated: one entry per active article,
+newest first, linking its summary), `<topic>/<id>/{summary.msgpack,
+article.msgpack,card.jpg,hero.jpg,article-expired.msgpack}` (summary card
+title + 70×70 + 358×201 + article URL; card and hero also embedded in the
+article), `retired/<topic>/<id>/article.msgpack` (expired replacement for
+anything retired), and `manifest.json` (inventory + SHA-256 of every
 payload). Requires libjpeg-turbo's `cjpeg` for the baseline JFIF 4:4:4
 images the console has accepted in every rendering test.
 
@@ -96,48 +114,32 @@ The script builds `cmd/newscontainer`, wraps every payload into a BCAT
 container (RSA-2048 PKCS#1 v1.5/SHA-256 over plaintext, AES-CTR, fresh IV,
 secret index 0), then **verifies each container independently with openssl
 against the public key in `tools/news-patch/openpak-bcat-public.pem`** and
-writes `SHA256SUMS`. It skips `retired/` and `manifest.json`. The signing
+writes `SHA256SUMS` (excluding itself). It skips `retired/` and
+`manifest.json`. Input, output and key paths must not overlap — a `-f` run
+deletes the output directory first, so an output that contains the input or
+a key is rejected before anything is removed. The signing
 and AES key paths above are owner-local; never copy them into any
 repository, and never print their contents. Rollback of a signing run is
 just deleting the signed directory.
 
-## Serve and inspect locally
-
-```sh
-go run ./cmd/newscdn -dir /tmp/openpak-news-seed-signed -listen 127.0.0.1:20040
-curl -s http://127.0.0.1:20040/api/nx/v1/topics/catalog -o /tmp/cat.bcat
-```
-
 Routes derive from the fixture tree — `catalog` at
 `/api/nx/v1/topics/catalog`, plus per channel `.../topics/<topic>/detail`,
-`.../topics/<topic>/icon`, and `/api/nx/v2/topics/<topic>/online_archives`.
+`.../topics/<topic>/icon`, `/api/nx/v2/topics/<topic>/online_archives`, and
+the per-article `/openpak/v1/topics/<topic>/news/<id>/{summary,article}`.
 This listener is plain HTTP for host inspection only; the console always
 uses the TLS arrangement on the server. Unknown topics (including
 Nintendo's own channels) fall through to the adapter fallback exactly as
 before.
 
-## Deploy (only after owner review of the signed content)
+## Deploy
 
-The deployed experiment is image v004 with the old single-channel fixture
-directory. Moving to this seed is a new tag and a new fixture directory,
-prepared before activation:
-
-```sh
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath \
-  -o tools/news-cdn/newscdn ./cmd/newscdn
-cd tools/news-cdn && podman build -t localhost/openpak-news-experiment:v005 . && cd ../..
-ssh <prod-host> 'mkdir -p ~/openpak/deploy/news-experiment/cdn-v002'
-scp -r /tmp/openpak-news-seed-signed/* <prod-host>:~/openpak/deploy/news-experiment/cdn-v002/
-```
-
-Then, on the server, edit
-`~/.config/containers/systemd/openpak-news-experiment.container` in two
-places — `Image=...:v005` and the fixtures volume `cdn-v001` → `cdn-v002` —
-and `systemctl --user daemon-reload && systemctl --user restart
-openpak-news-experiment`. Keep the v004 image for rollback (revert both
-lines, restart). Public HTTPS bytes can be checked with the existing CA.
-Nothing above has been run for this seed; the deployed service is still
-v004 until the owner acts.
+The live deployment is v006/cdn-v003 (see
+[the delivery doc](../docs/native-news-article-delivery.md) for its exact
+facts and rollback). The artwork rebrand is **not deployed**; after owner
+review it ships as the next round (v007/cdn-v004) with the same procedure:
+cross-build the arm64 binary, build the image on the server, copy the signed
+fixture tree, then switch the quadlet's `Image=` and fixtures volume together
+and restart. Keep the previous image and fixture directory for rollback.
 
 ## Update and retire
 
@@ -145,23 +147,37 @@ v004 until the owner acts.
   new timestamps and content — the identity the console knows stays stable.
 - **Retire one article:** `go run ./cmd/newsseed --retire openpak_help/2609100303`
   (add a real `reason` to `channels/retired.json`), then rebuild and sign.
-  The article leaves the build; an expired replacement with the same id is
-  produced under `retired/` for the delivery path once it exists. Retirement
-  on the console is expiry-based — the expired card disappears during the
-  console's own housekeeping (observed once, 14→13 records); instant
-  deletion is **not** guaranteed and not promised anywhere.
+  The article loses its archive link and active outputs; an expired
+  replacement with the same id is produced under `retired/` so the console
+  can retire its copy. Retirement on the console is expiry-based — the
+  expired card disappears during the console's own housekeeping (observed
+  once, 14→13 records); instant deletion is **not** guaranteed and not
+  promised anywhere.
+- **Un-retire:** `--unretire topic/id`, rebuild, resign. (This restores the
+article to an active channel; a removed channel must first be restored to
+`lineup.json`.)
 - **Un-retire:** `--unretire topic/id`, rebuild, resign.
-- **Remove a channel:** retire all its articles and drop it from
-  `lineup.json`; the next catalog simply stops listing it.
+- **Remove a channel:** retire its articles first (see above). Then, for
+each retirement entry, copy the channel's block from `lineup.json` into the
+entry as its `topic` snapshot, and delete the channel's block from
+`lineup.json`. Keep the article source files — they remain the payload
+source for the retirement fixtures, which the build keeps producing under
+`retired/` and records under `removed_channels` in the manifest. The next
+catalog simply stops listing the channel. Rebuilding without the topic
+snapshot (or with a removed-channel article still unretired) fails with an
+explanation, never silently. Removing the **last** channel builds an empty
+catalog, and the CDN serves it as catalog-only — a deliberate state, though
+its Find Channels behaviour on hardware is untested; prefer keeping at
+least one channel live.
 
 ## Inventory (2026-09-10 seed)
 
-| Topic | Name | Icon |
+| Topic | Name | Icon (official mark, centre dot swapped) |
 | --- | --- | --- |
-| `openpak_news` | OpenPak News | beacon, blue |
-| `openpak_games` | OpenPak Games | d-pad cross, green |
-| `openpak_workshop` | OpenPak Workshop | hex hub, violet |
-| `openpak_help` | OpenPak Help | lifebuoy, orange |
+| `openpak_news` | OpenPak News | the official logo, unchanged |
+| `openpak_games` | OpenPak Games | centre dot replaced by a gamepad |
+| `openpak_workshop` | OpenPak Workshop | centre dot replaced by a gear |
+| `openpak_help` | OpenPak Help | centre dot replaced by a question mark |
 
 | Article | Title | Evidence it rests on |
 | --- | --- | --- |
@@ -175,23 +191,29 @@ v004 until the owner acts.
 | `openpak_workshop/2609100202` | How your console finds our channels | server request logs; v004 archives work in `docs/native-news-container.md` |
 | `openpak_workshop/2609100203` | Two small patches, honestly explained | `tools/news-patch/README.md`, `tools/news-patch/news-no-dauth/README.md` |
 | `openpak_help/2609100301` | Getting your console ready for OpenPak News | installer hosts fix (probe v0.16), patch installers R/L and D-pad |
-| `openpak_help/2609100302` | When News will not load, read this | documented 0x167B history: DNS → TLS profile → edge token |
+| `openpak_help/2609100302` | When News will not load, read this | documented 0x167B history: DNS omission and edge token confirmed; TLS profile never proven necessary (probe v0.18/v0.19) |
 | `openpak_help/2609100303` | Where articles live, and when they leave | verified expiry replacement + later disappearance; no instant-delete guarantee |
+
+Article banners use the scene motifs in this order — News: `mark`,
+`burst`, `horizon`; Games: `pad`, `levels`, `podium`; Workshop: `gear`,
+`orbit`, `wrench`; Help: `power`, `question`, `refresh`. All art is drawn
+by [`cmd/newsseed/art.go`](../cmd/newsseed/art.go) from the official mark's
+geometry (indigo gradient, ring, spiral arc) — original, deterministic, no
+third-party assets.
 
 ## Remaining hardware checks (in order)
 
-1. **Catalog with four channels** decodes natively. Only the one-channel,
-   155-byte catalog is hardware-proven; this catalog decodes to 720 bytes
-   host-side. No size limit is documented, but it is a new payload.
-2. **Channel page acceptance** — still pending from v004. Open News →
-   Find Channels, expect the four OpenPak channels with distinct icons.
-   Correlate catalog/detail/icon/archives requests in the service log.
-3. **Per-channel detail + icon** render when each channel is opened.
-4. **Subscription** on one channel, persistence across reboot.
-5. **Article delivery** — blocked on the archive `data_list` entry format
-   (trace the parser at the documented qlaunch offsets first; do not guess
-   fields). The signed article containers here are ready inputs for that
-   work, not deliverable fixtures.
-6. **Update + scoped retirement** once delivery works: replace one
-   article's bytes by id, then retire one and confirm the others are
-   untouched.
+1. **Populated archive acceptance** — the console parses each channel's
+   `data_list` entries (news_id, version, default_language,
+   languages[].summary_url) and requests the summaries. Deployed in v006;
+   console-side acceptance is the open gate.
+2. **Summary card + full article rendering** — title, 70×70 icon and
+   358×201 card from the summary, then the NORMAL article through the
+   remote reader (layout proven locally in v0.12; remote acceptance
+   pending).
+3. **Channel page + icons** — four channels listed with distinct icons;
+   after the artwork rebrand deploys, re-check the icons specifically.
+4. **Subscription** on one channel, persistence across reboot, automatic
+   refresh delivery (separate from the archive path; unimplemented).
+5. **Update + scoped retirement** — replace one article's bytes by id,
+   then retire one and confirm the others are untouched.

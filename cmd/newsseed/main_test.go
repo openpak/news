@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func writeSource(t *testing.T) string {
 			"publisher": "OpenPak",
 			"description": "Test channel.",
 			"important": false,
-			"icon": {"motif": "beacon", "hue": 212}
+			"icon": {"motif": "mark"}
 		}]}`)
 	mustWrite("openpak_test/2609100001.json", `{
 		"news_id": 2609100001,
@@ -38,7 +39,7 @@ func writeSource(t *testing.T) string {
 		"language": "en-GB",
 		"supported_languages": ["en-GB"],
 		"lifetime_days": 7,
-		"art": {"motif": "rays", "hue": 160}
+		"art": {"motif": "burst"}
 	}`)
 	mustWrite("openpak_test/2609100002.json", `{
 		"news_id": 2609100002,
@@ -47,13 +48,17 @@ func writeSource(t *testing.T) string {
 		"language": "en-GB",
 		"supported_languages": ["en-GB"],
 		"lifetime_days": 7,
-		"art": {"motif": "waves", "hue": 200}
+		"art": {"motif": "orbit"}
 	}`)
 	mustWrite("retired.json", `{"retired": []}`)
 	return dir
 }
 
 func buildDir(t *testing.T, source, out string) {
+	buildDirAdopt(t, source, out, false)
+}
+
+func buildDirAdopt(t *testing.T, source, out string, adopt bool) {
 	t.Helper()
 	l, err := loadLineup(source)
 	if err != nil {
@@ -67,7 +72,7 @@ func buildDir(t *testing.T, source, out string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := build(source, out, when, l, r); err != nil {
+	if err := build(source, out, when, l, r, adopt); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -174,6 +179,16 @@ func TestRerunPrunesRetiredArtifacts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(out, "openpak_test", "2609100001", "article.msgpack")); !os.IsNotExist(err) {
 		t.Fatal("stale active artifact survived the retirement rebuild")
 	}
+	archive, err := os.ReadFile(filepath.Join(out, "openpak_test", "archives.msgpack"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(archive, []byte("/2609100001/summary")) || !bytes.Contains(archive, []byte("/2609100002/summary")) {
+		t.Fatal("archive does not exclude retired article while keeping active article")
+	}
+	if _, err := os.Stat(filepath.Join(out, "openpak_test", "2609100002", "summary.msgpack")); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := os.Stat(filepath.Join(out, "retired", "openpak_test", "2609100001", "article.msgpack")); err != nil {
 		t.Fatal("retired replacement missing")
 	}
@@ -190,6 +205,151 @@ func TestRerunPrunesRetiredArtifacts(t *testing.T) {
 	}
 }
 
+func TestPruneNeverTouchesUnrecordedPaths(t *testing.T) {
+	source := writeSource(t)
+	out := filepath.Join(t.TempDir(), "build")
+	buildDir(t, source, out) // writes the marker and manifest
+
+	// An unrelated directory and file inside the output dir must survive.
+	foreign := filepath.Join(out, "notes")
+	if err := os.MkdirAll(foreign, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(foreign, "todo.txt"), []byte("keep me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	buildDir(t, source, out)
+	if _, err := os.Stat(filepath.Join(foreign, "todo.txt")); err != nil {
+		t.Fatal("unrelated directory was deleted by a rerun")
+	}
+
+	// A directory without the marker (a pre-marker build) must not be
+	// silently rebuilt: plain rebuild fails, and --adopt migrates it by
+	// sweeping the previously generated artifacts — otherwise a retired
+	// article's stale live payload would linger and get signed.
+	foreignOut := t.TempDir()
+	copyTree(t, out, foreignOut)
+	if err := os.Remove(filepath.Join(foreignOut, markerName)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(
+		`{"retired":[{"topic_id":"openpak_test","news_id":2609100001,"reason":"gone"}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	l, err := loadLineup(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := loadRetired(filepath.Join(source, "retired.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	when, _ := time.Parse(time.RFC3339, pinned)
+	if err := build(source, foreignOut, when, l, r, false); err == nil {
+		t.Fatal("rebuild of a marker-less directory was accepted")
+	}
+	// The stale live payload is still there before adoption...
+	if _, err := os.Stat(filepath.Join(foreignOut, "openpak_test", "2609100001", "article.msgpack")); err != nil {
+		t.Fatal("precondition: stale live payload missing")
+	}
+	// ...and adoption sweeps it, leaving only the retirement fixture.
+	buildDirAdopt(t, source, foreignOut, true)
+	if _, err := os.Stat(filepath.Join(foreignOut, "openpak_test", "2609100001", "article.msgpack")); !os.IsNotExist(err) {
+		t.Fatal("adopt kept the retired article's stale live payload")
+	}
+	if _, err := os.Stat(filepath.Join(foreignOut, "retired", "openpak_test", "2609100001", "article.msgpack")); err != nil {
+		t.Fatal("adopt lost the retirement fixture")
+	}
+}
+
+func TestRemovedChannelRetirementStillBuilds(t *testing.T) {
+	source := writeSource(t)
+	out := filepath.Join(t.TempDir(), "build")
+	// Retire both articles, remove the channel from the lineup, and record
+	// the topic snapshot in each retirement entry, as documented.
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(`{
+		"retired": [
+			{"topic_id": "openpak_test", "news_id": 2609100001, "reason": "channel removed",
+			 "topic": {"topic_id": "openpak_test", "name": "OpenPak Test", "publisher": "OpenPak",
+				"description": "Test channel.", "important": false,
+				"icon": {"motif": "mark"}}},
+			{"topic_id": "openpak_test", "news_id": 2609100002, "reason": "channel removed",
+			 "topic": {"topic_id": "openpak_test", "name": "OpenPak Test", "publisher": "OpenPak",
+				"description": "Test channel.", "important": false,
+				"icon": {"motif": "mark"}}}
+		]
+	}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	var lineup lineupSource
+	raw, _ := os.ReadFile(filepath.Join(source, "lineup.json"))
+	if err := json.Unmarshal(raw, &lineup); err != nil {
+		t.Fatal(err)
+	}
+	lineup.Channels = nil // drop the channel entirely
+	// build() needs the lineup loaded from the source dir, so rewrite it.
+	if err := os.WriteFile(filepath.Join(source, "lineup.json"), []byte(`{"channels": []}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	l, err := loadLineup(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Channels) != 0 {
+		t.Fatal("lineup should be empty")
+	}
+	r, err := loadRetired(filepath.Join(source, "retired.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	when, _ := time.Parse(time.RFC3339, pinned)
+	if err := build(source, out, when, l, r, false); err != nil {
+		t.Fatalf("removed-channel retirement rejected: %v", err)
+	}
+	for _, id := range []string{"2609100001", "2609100002"} {
+		if _, err := os.Stat(filepath.Join(out, "retired", "openpak_test", id, "article.msgpack")); err != nil {
+			t.Fatalf("retirement fixture for removed channel missing (%s)", id)
+		}
+	}
+	var man manifest
+	raw, _ = os.ReadFile(filepath.Join(out, "manifest.json"))
+	if err := json.Unmarshal(raw, &man); err != nil {
+		t.Fatal(err)
+	}
+	if len(man.Removed) != 1 || len(man.Removed[0].Articles) != 2 {
+		t.Fatalf("manifest removed_channels not recorded: %+v", man.Removed)
+	}
+	if man.Catalog.Size == 0 {
+		t.Fatal("catalog missing")
+	}
+
+	// Missing topic snapshot must be rejected with an explanation.
+	badOut := t.TempDir()
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(
+		`{"retired":[{"topic_id":"openpak_test","news_id":2609100001,"reason":"no snapshot"}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	r, err = loadRetired(filepath.Join(source, "retired.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := build(source, badOut, when, l, r, false); err == nil {
+		t.Fatal("removed-channel retirement without topic snapshot accepted")
+	}
+
+	// An unretired article under a removed channel must be rejected too.
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(`{"retired": []}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	r, err = loadRetired(filepath.Join(source, "retired.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := build(source, badOut, when, l, r, false); err == nil {
+		t.Fatal("unretired article under removed channel accepted")
+	}
+}
+
 func TestSourceValidation(t *testing.T) {
 	base := writeSource(t)
 	cases := []struct {
@@ -197,23 +357,23 @@ func TestSourceValidation(t *testing.T) {
 	}{
 		{"duplicate id", "openpak_test/2609100099.json", `{"news_id": 2609100001, "title": "x",
 			"body": "b", "language": "en-GB", "supported_languages": ["en-GB"],
-			"lifetime_days": 7, "art": {"motif": "rays", "hue": 1}}`},
+			"lifetime_days": 7, "art": {"motif": "burst"}}`},
 		{"filename mismatch", "openpak_test/999.json", `{"news_id": 2609100042, "title": "x",
 			"body": "b", "language": "en-GB", "supported_languages": ["en-GB"],
-			"lifetime_days": 7, "art": {"motif": "rays", "hue": 1}}`},
+			"lifetime_days": 7, "art": {"motif": "burst"}}`},
 		{"newline body", "openpak_test/2609100043.json", `{"news_id": 2609100043, "title": "x",
 			"body": "a\nb", "language": "en-GB", "supported_languages": ["en-GB"],
-			"lifetime_days": 7, "art": {"motif": "rays", "hue": 1}}`},
+			"lifetime_days": 7, "art": {"motif": "burst"}}`},
 		{"unknown motif", "openpak_test/2609100044.json", `{"news_id": 2609100044, "title": "x",
 			"body": "b", "language": "en-GB", "supported_languages": ["en-GB"],
 			"lifetime_days": 7, "art": {"motif": "flames", "hue": 1}}`},
 		{"id too large", "openpak_test/2609100045.json", `{"news_id": 5000000000, "title": "x",
 			"body": "b", "language": "en-GB", "supported_languages": ["en-GB"],
-			"lifetime_days": 7, "art": {"motif": "rays", "hue": 1}}`},
+			"lifetime_days": 7, "art": {"motif": "burst"}}`},
 		{"missing self language", "openpak_test/2609100046.json", `{"news_id": 2609100046,
 			"title": "x", "body": "b", "language": "en-GB",
 			"supported_languages": ["en-US"], "lifetime_days": 7,
-			"art": {"motif": "rays", "hue": 1}}`},
+			"art": {"motif": "burst"}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -231,7 +391,7 @@ func TestSourceValidation(t *testing.T) {
 			}
 			r, _ := loadRetired(filepath.Join(dir, "retired.json"))
 			when, _ := time.Parse(time.RFC3339, pinned)
-			if err := build(dir, filepath.Join(t.TempDir(), "o"), when, l, r); err == nil {
+			if err := build(dir, filepath.Join(t.TempDir(), "o"), when, l, r, false); err == nil {
 				t.Fatalf("%s accepted", tc.name)
 			}
 		})
@@ -275,7 +435,7 @@ func TestRetiredEntryNeedsReason(t *testing.T) {
 		t.Fatal(err)
 	}
 	when, _ := time.Parse(time.RFC3339, pinned)
-	if err := build(source, t.TempDir(), when, l, r); err == nil {
+	if err := build(source, t.TempDir(), when, l, r, false); err == nil {
 		t.Fatal("retired entry without reason accepted")
 	}
 }

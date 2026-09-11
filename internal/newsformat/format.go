@@ -2,12 +2,10 @@
 // Package newsformat encodes platform-neutral News content into the
 // MessagePack payload shapes the native Switch News reader accepts.
 //
-// Every shape reproduces, field for field, a layout hardware has accepted:
-// the NORMAL article confirmed rendering in the v0.12 local test
-// (docs/native-news-local-format.md) and the catalog/detail/archives
-// records the console's own service decoded on 2026-09-09
-// (docs/native-news-container.md). Map ordering is preserved exactly and
-// integers use compact widths, matching the observed encoder. The package
+// The NORMAL article rendered in the v0.12 local test and native catalog
+// decoding succeeded on 2026-09-09. Populated archives and summaries follow
+// owner-local qlaunch parser analysis; hardware acceptance is a separate gate.
+// Maps are ordered and integers use compact widths. The package
 // holds no keys and no container logic; wrapping into signed/encrypted
 // BCAT containers is internal/bcatcontainer's job.
 package newsformat
@@ -190,12 +188,40 @@ func Detail(ch Channel) Map {
 	return append(ch.record(), Field{Key: "latest_news_urls", Value: []any{}})
 }
 
-// Archives encodes the channel archives response. data_list stays empty
-// until its entry schema is validated on hardware; see the authoring guide.
-func Archives() Map {
+// Archives encodes the channel archive, optionally with populated entries.
+func Archives(entries ...Map) Map {
+	list := make([]any, 0, len(entries))
+	for _, entry := range entries {
+		list = append(list, entry)
+	}
 	return Map{
 		{"na_required", false},
-		{"data_list", []any{}},
+		{"data_list", list},
+	}
+}
+
+// ArchiveEntry follows qlaunch 22.5's online_archives parser. Language must
+// precede summary_url: the streaming parser selects the URL using that value.
+// Serial conditions are omitted: these original articles target all consoles.
+func ArchiveEntry(id int64, language, summaryURL string) Map {
+	return Map{
+		{"news_id", id},
+		{"version", Map{{"format", int64(1)}, {"semantics", int64(1)}}},
+		{"default_language", language},
+		{"languages", []any{Map{{"language", language}, {"summary_url", summaryURL}}}},
+	}
+}
+
+// Summary is the separate card payload fetched through summary_url. Its url
+// points to the full article; both responses use signed BCAT containers.
+func (a Article) Summary(articleURL string) Map {
+	return Map{
+		{"no_photography", int64(0)},
+		{"subject", Map{{"caption", int64(1)}, {"text", a.Title}}},
+		{"movie", int64(0)},
+		{"icon_image", a.TopicImage},
+		{"list_image", a.ListImage},
+		{"url", articleURL},
 	}
 }
 

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Original programmatic artwork for the OpenPak channel seed. Every pixel
-// is drawn here from integer math; nothing is copied from games, Nintendo
-// assets or stock art. Output is deterministic for a given motif, hue and
-// size, so rebuilds are reproducible.
+// Original artwork for the OpenPak channel seed, built on the official
+// OpenPak mark. The mark reproduces website/web/static/icon.svg (512-unit
+// design: indigo gradient disc, white ring, 270-degree arc, centre dot) —
+// the same geometry app/lib/logo.dart renders and the console NRO draws.
+// Channel icons swap the centre dot for a glyph; article art composes the
+// mark with gaming scenes. Everything is drawn here from deterministic
+// math; nothing is copied from games or third-party assets.
 
 package main
 
@@ -17,73 +20,52 @@ import (
 
 type rgb = color.RGBA
 
-var (
-	navy   = rgb{R: 16, G: 26, B: 44, A: 255}
-	inkCol = rgb{R: 232, G: 238, B: 244, A: 255}
-)
-
-func hsv(h float64, s, v float64) rgb {
-	r, g, b := hsvToRGB(math.Remainder(h, 1.0), s, v)
+func hexRGB(s string) rgb {
+	var r, g, b uint8
+	fmt.Sscanf(s, "#%02x%02x%02x", &r, &g, &b)
 	return rgb{R: r, G: g, B: b, A: 255}
 }
 
-// hsvToRGB converts hue in [0,1), saturation and value to 8-bit RGB.
-func hsvToRGB(h, s, v float64) (uint8, uint8, uint8) {
-	if h < 0 {
-		h += 1
-	}
-	i := int(math.Floor(h*6)) % 6
-	f := h*6 - math.Floor(h*6)
-	p := v * (1 - s)
-	q := v * (1 - f*s)
-	t := v * (1 - (1-f)*s)
-	var r, g, b float64
-	switch i {
-	case 0:
-		r, g, b = v, t, p
-	case 1:
-		r, g, b = q, v, p
-	case 2:
-		r, g, b = p, v, t
-	case 3:
-		r, g, b = p, q, v
-	case 4:
-		r, g, b = t, p, v
-	default:
-		r, g, b = v, p, q
-	}
-	return uint8(math.Round(r * 255)), uint8(math.Round(g * 255)), uint8(math.Round(b * 255))
-}
+// Brand palette: the logo's indigo gradient plus its tints.
+var (
+	logoFrom   = hexRGB("#6366F1")
+	logoTo     = hexRGB("#4338CA")
+	indigoHi   = hexRGB("#818CF8")
+	indigoMid  = hexRGB("#4F46E5")
+	indigoDeep = hexRGB("#3730A3")
+	inkWhite   = hexRGB("#F4F5FF")
+	sceneTop   = hexRGB("#2B2470")
+	sceneMid   = hexRGB("#141130")
+	sceneBot   = hexRGB("#060514")
+)
 
-type palette struct {
-	bgTop, bgBottom, accent, alt, ink rgb
-}
+const white = "#FFFFFF"
 
-func paletteFor(hue int) palette {
-	h := float64(hue%360) / 360
-	return palette{
-		bgTop:    navy,
-		bgBottom: hsv(h, 0.45, 0.24),
-		accent:   hsv(h, 0.72, 0.86),
-		alt:      hsv(math.Remainder(h+0.12, 1.0), 0.52, 0.60),
-		ink:      inkCol,
-	}
-}
+// ---------- canvas primitives ----------
 
-// canvas is a tiny deterministic raster with the few primitives the motifs
-// need. Coordinates are inclusive-exclusive on the right/bottom edge.
 type canvas struct {
 	w, h int
 	px   []rgb
 }
 
-// image.Image compliance lets encodeJPEG read the canvas generically.
-func (c *canvas) At(x, y int) color.Color { return c.px[y*c.w+x] }
+func newCanvas(w, h int) *canvas {
+	return &canvas{w: w, h: h, px: make([]rgb, w*h)}
+}
+
+func (c *canvas) At(x, y int) color.Color {
+	return c.px[clamp(y, 0, c.h-1)*c.w+clamp(x, 0, c.w-1)]
+}
 func (c *canvas) ColorModel() color.Model { return color.RGBAModel }
 func (c *canvas) Bounds() image.Rectangle { return image.Rect(0, 0, c.w, c.h) }
 
-func newCanvas(w, h int) *canvas {
-	return &canvas{w: w, h: h, px: make([]rgb, w*h)}
+func clamp(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
 
 func (c *canvas) set(x, y int, col rgb) {
@@ -93,13 +75,22 @@ func (c *canvas) set(x, y int, col rgb) {
 	c.px[y*c.w+x] = col
 }
 
-func (c *canvas) gradient(top, bottom rgb) {
-	for y := 0; y < c.h; y++ {
-		t := float64(y) / float64(max(c.h-1, 1))
-		for x := 0; x < c.w; x++ {
-			c.set(x, y, lerp(top, bottom, t))
-		}
+// over composites src onto dst with alpha a (0..1).
+func over(dst, src rgb, a float64) rgb {
+	mix := func(d, s uint8) uint8 {
+		return uint8(math.Round(float64(s)*a + float64(d)*(1-a)))
 	}
+	return rgb{R: mix(dst.R, src.R), G: mix(dst.G, src.G), B: mix(dst.B, src.B), A: 255}
+}
+
+func (c *canvas) blend(x, y int, col rgb, a float64) {
+	if x < 0 || y < 0 || x >= c.w || y >= c.h || a <= 0 {
+		return
+	}
+	if a > 1 {
+		a = 1
+	}
+	c.set(x, y, over(c.px[y*c.w+x], col, a))
 }
 
 func (c *canvas) fill(col rgb) {
@@ -110,6 +101,33 @@ func (c *canvas) fill(col rgb) {
 	}
 }
 
+// diagGrad paints a diagonal three-stop gradient (top-left to bottom-right).
+func (c *canvas) diagGrad(stops ...rgb) {
+	for y := 0; y < c.h; y++ {
+		for x := 0; x < c.w; x++ {
+			t := (float64(x)/float64(c.w) + float64(y)/float64(c.h)) / 2
+			c.set(x, y, gradAt(stops, t))
+		}
+	}
+}
+
+func gradAt(stops []rgb, t float64) rgb {
+	if t < 0 {
+		t = 0
+	}
+	if t > 1 {
+		t = 1
+	}
+	n := len(stops) - 1
+	f := t * float64(n)
+	i := int(f)
+	if i >= n {
+		return stops[n]
+	}
+	local := f - float64(i)
+	return lerp(stops[i], stops[i+1], local)
+}
+
 func (c *canvas) rect(x0, y0, x1, y1 int, col rgb) {
 	for y := y0; y < y1; y++ {
 		for x := x0; x < x1; x++ {
@@ -118,264 +136,511 @@ func (c *canvas) rect(x0, y0, x1, y1 int, col rgb) {
 	}
 }
 
-func (c *canvas) disc(cx, cy, r int, col rgb) {
+func (c *canvas) disc(cx, cy int, r float64, col rgb) {
 	if r <= 0 {
 		return
 	}
-	for y := cy - r; y <= cy+r; y++ {
-		for x := cx - r; x <= cx+r; x++ {
-			dx, dy := x-cx, y-cy
-			if dx*dx+dy*dy <= r*r {
+	for y := cy - int(r) - 1; y <= cy+int(r)+1; y++ {
+		for x := cx - int(r) - 1; x <= cx+int(r)+1; x++ {
+			dx, dy := float64(x-cx), float64(y-cy)
+			if math.Sqrt(dx*dx+dy*dy) <= r+0.5 {
 				c.set(x, y, col)
 			}
 		}
 	}
 }
 
-func (c *canvas) ring(cx, cy, r, thick int, col rgb) {
+func (c *canvas) glowDisc(cx, cy int, r float64, col rgb, a float64) {
+	// Radial falloff in five shells — cheap deterministic bloom.
+	for i := 5; i >= 1; i-- {
+		c.discGlow(cx, cy, r*float64(i)/2.2, col, a*0.22)
+	}
+	c.disc(cx, cy, r, col)
+}
+
+func (c *canvas) discGlow(cx, cy int, r float64, col rgb, a float64) {
+	for y := cy - int(r) - 1; y <= cy+int(r)+1; y++ {
+		for x := cx - int(r) - 1; x <= cx+int(r)+1; x++ {
+			dx, dy := float64(x-cx), float64(y-cy)
+			d := math.Sqrt(dx*dx + dy*dy)
+			if d <= r {
+				fall := 1 - 0.7*(d/r)
+				c.blend(x, y, col, a*fall)
+			}
+		}
+	}
+}
+
+func (c *canvas) ring(cx, cy int, r, thick float64, col rgb) {
 	if r <= 0 || thick <= 0 {
 		return
 	}
-	outer, inner := r, r-thick
-	for y := cy - outer; y <= cy+outer; y++ {
-		for x := cx - outer; x <= cx+outer; x++ {
-			dx, dy := x-cx, y-cy
-			d := dx*dx + dy*dy
-			if d <= outer*outer && d > inner*inner {
+	ro, ri := r+thick/2+0.5, r-thick/2-0.5
+	for y := cy - int(r+thick) - 1; y <= cy+int(r+thick)+1; y++ {
+		for x := cx - int(r+thick) - 1; x <= cx+int(r+thick)+1; x++ {
+			dx, dy := float64(x-cx), float64(y-cy)
+			d := math.Sqrt(dx*dx + dy*dy)
+			if d <= ro && d >= ri {
 				c.set(x, y, col)
 			}
 		}
 	}
 }
 
-func (c *canvas) line(x0, y0, x1, y1, thick int, col rgb) {
+// arc strokes a circular arc from a0 to a1 degrees (y-down screen angles:
+// 0 = east, 90 = south, 180 = west, 270 = north), with round caps.
+func (c *canvas) arc(cx, cy int, r, thick float64, a0, a1 float64, col rgb) {
+	if r <= 0 || thick <= 0 {
+		return
+	}
+	steps := int((a1 - a0) / 360 * (2 * math.Pi * r) * 2)
+	if steps < 8 {
+		steps = 8
+	}
+	for i := 0; i <= steps; i++ {
+		a := (a0 + (a1-a0)*float64(i)/float64(steps)) * math.Pi / 180
+		x := cx + int(math.Round(r*math.Cos(a)))
+		y := cy + int(math.Round(r*math.Sin(a)))
+		c.disc(x, y, thick/2, col)
+	}
+}
+
+func (c *canvas) line(x0, y0, x1, y1 int, thick float64, col rgb) {
 	steps := max(abs(x1-x0), abs(y1-y0), 1)
-	half := max(thick/2, 0)
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
 		x := x0 + int(math.Round(float64(x1-x0)*t))
 		y := y0 + int(math.Round(float64(y1-y0)*t))
-		c.disc(x, y, half, col)
+		c.disc(x, y, thick/2, col)
 	}
 }
 
-// motif paints into a square of side m centred on (cx, cy).
-type motif func(c *canvas, cx, cy, m int, p palette)
-
-func motifByName(name string) (motif, error) {
-	switch name {
-	case "beacon":
-		return mBeacon, nil
-	case "pad":
-		return mPad, nil
-	case "gear":
-		return mGear, nil
-	case "buoy":
-		return mBuoy, nil
-	case "waves":
-		return mWaves, nil
-	case "rays":
-		return mRays, nil
-	case "orbit":
-		return mOrbit, nil
-	case "grid":
-		return mGrid, nil
-	case "steps":
-		return mSteps, nil
-	case "spark":
-		return mSpark, nil
-	default:
-		return nil, fmt.Errorf("unknown motif %q", name)
-	}
-}
-
-// mBeacon: a broadcast mark — centre dot, two signal rings and short
-// diagonal ticks between them. Everything stays well inside the frame.
-func mBeacon(c *canvas, cx, cy, m int, p palette) {
-	c.disc(cx, cy, m/9, p.accent)
-	c.ring(cx, cy, m*5/18, m/22, p.ink)
-	c.ring(cx, cy, m*13/36, m/20, p.accent)
-	for _, d := range [4][2]int{{1, -1}, {1, 1}, {-1, 1}, {-1, -1}} {
-		x0 := cx + d[0]*m*7/36
-		y0 := cy + d[1]*m*7/36
-		x1 := cx + d[0]*m*11/36
-		y1 := cy + d[1]*m*11/36
-		c.line(x0, y0, x1, y1, m/18, p.ink)
-	}
-}
-
-// mPad: an abstract controller — a directional cross on the left and two
-// round buttons on the right.
-func mPad(c *canvas, cx, cy, m int, p palette) {
-	px := cx - m*3/16
-	arm, thick := m/5, m/14
-	c.rect(px-arm, cy-thick, px+arm, cy+thick, p.accent) // cross bar
-	c.rect(px-thick, cy-arm, px+thick, cy+arm, p.accent) // upright
-	c.disc(px, cy, thick/2+1, navy)                      // hub dimple
-	bx := cx + m*9/32
-	c.disc(bx, cy-m/10, m/11, p.ink)
-	c.disc(bx+m/6, cy+m/10, m/11, p.alt)
-}
-
-// mGear: hexagon and hub, the workshop mark.
-func mGear(c *canvas, cx, cy, m int, p palette) {
-	r := m * 8 / 25
-	pts := make([][2]int, 6)
-	for i := range pts {
-		a := float64(i) * math.Pi / 3
-		pts[i] = [2]int{cx + int(math.Round(float64(r)*math.Cos(a))),
-			cy + int(math.Round(float64(r)*math.Sin(a)))}
-	}
-	for i := range pts {
-		j := (i + 1) % len(pts)
-		c.line(pts[i][0], pts[i][1], pts[j][0], pts[j][1], m/13, p.accent)
-	}
-	c.disc(cx, cy, m/7, p.alt)
-	c.disc(cx, cy, m/16, navy)
-	for i := 0; i < 6; i++ {
-		a := float64(i) * math.Pi / 3
-		c.line(cx+int(math.Round(float64(r)*0.72*math.Cos(a))),
-			cy+int(math.Round(float64(r)*0.72*math.Sin(a))),
-			cx+int(math.Round(float64(r)*1.5*math.Cos(a))),
-			cy+int(math.Round(float64(r)*1.5*math.Sin(a))), m/16, p.ink)
-	}
-}
-
-// mBuoy: a lifebuoy ring with four gaps — the help mark.
-func mBuoy(c *canvas, cx, cy, m int, p palette) {
-	r, thick := m*8/25, m*9/64
-	c.ring(cx, cy, r, thick, p.accent)
-	g := m / 11
-	c.rect(cx-g, cy-r-thick, cx+g, cy-r+thick, navy) // north gap
-	c.rect(cx-g, cy+r-thick, cx+g, cy+r+thick, navy) // south gap
-	c.rect(cx-r-thick, cy-g, cx-r+thick, cy+g, navy) // west gap
-	c.rect(cx+r-thick, cy-g, cx+r+thick, cy+g, navy) // east gap
-	c.disc(cx, cy, m/9, p.alt)
-}
-
-// mWaves: layered sine bands.
-func mWaves(c *canvas, cx, cy, m int, p palette) {
-	span := m * 9 / 10
-	for i := 0; i < 4; i++ {
-		col := p.accent
-		if i%2 == 1 {
-			col = p.alt
-		}
-		for dx := -span; dx <= span; dx++ {
-			x := cx + dx
-			y := cy + (i-2)*m*3/20 + int(math.Round(float64(dx)/float64(m)*3.2*math.Sin(float64(dx)*0.09)))
-			c.disc(x, y, m/22, col)
-		}
-	}
-}
-
-// mRays: diagonal stripes rising to the upper right.
-func mRays(c *canvas, cx, cy, m int, p palette) {
-	span := m * 3 / 5
-	for k := -5; k <= 5; k++ {
-		col := p.accent
-		if k%2 == 0 {
-			col = p.alt
-		}
-		x0 := cx + k*span/2
-		c.line(x0, cy+span, x0+span*2/3, cy-span, m/16, col)
-	}
-	c.disc(cx, cy, m/9, p.ink)
-}
-
-// mOrbit: a ring, two bodies and a centre star.
-func mOrbit(c *canvas, cx, cy, m int, p palette) {
-	c.ring(cx, cy, m*7/20, m/18, p.alt)
-	a := -math.Pi / 5
-	px := cx + int(math.Round(float64(m)*7/20*math.Cos(a)))
-	py := cy + int(math.Round(float64(m)*7/20*math.Sin(a)))
-	c.disc(px, py, m/9, p.accent)
-	c.disc(cx-m*7/20, cy, m/14, p.ink)
-	c.disc(cx, cy, m/16, p.ink)
-}
-
-// mGrid: a dot lattice with a highlighted sine path.
-func mGrid(c *canvas, cx, cy, m int, p palette) {
-	step := m / 5
-	for gy := -2; gy <= 2; gy++ {
-		for gx := -2; gx <= 2; gx++ {
-			x, y := cx+gx*step, cy+gy*step
-			col := p.alt
-			if gy == 0 && gx >= -2 {
-				col = p.accent
-				y = cy + int(math.Round(float64(gx)*math.Sin(float64(gx)*0.9)*float64(step)/2.4))
+// rrect fills a rounded rectangle.
+func (c *canvas) rrect(x0, y0, x1, y1 int, rad float64, col rgb) {
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			dx, dy := 0.0, 0.0
+			cx, cy := float64(x), float64(y)
+			if cx < float64(x0)+rad {
+				dx = float64(x0) + rad - cx
+			} else if cx > float64(x1)-rad {
+				dx = cx - (float64(x1) - rad)
 			}
-			c.disc(x, y, m/16, col)
+			if cy < float64(y0)+rad {
+				dy = float64(y0) + rad - cy
+			} else if cy > float64(y1)-rad {
+				dy = cy - (float64(y1) - rad)
+			}
+			if math.Sqrt(dx*dx+dy*dy) <= rad+0.5 {
+				c.set(x, y, col)
+			}
 		}
 	}
 }
 
-// mSteps: ascending bars with a milestone dot on top.
-func mSteps(c *canvas, cx, cy, m int, p palette) {
-	base := cy + m*2/5
-	w := m / 5
-	for i := 0; i < 4; i++ {
-		hgt := m * (i + 2) / 8
-		x0 := cx - m*2/5 + i*w*9/8
-		col := p.accent
-		if i%2 == 1 {
-			col = p.alt
-		}
-		c.rect(x0, base-hgt, x0+w, base, col)
-		if i == 3 {
-			c.disc(x0+w/2, base-hgt-m/14, m/16, p.ink)
-		}
-	}
-}
+// ---------- the OpenPak mark ----------
 
-// mSpark: a centre plus and a deterministic scatter of small ones.
-func mSpark(c *canvas, cx, cy, m int, p palette) {
-	arm := m / 12
-	for gy := -2; gy <= 2; gy++ {
-		for gx := -2; gx <= 2; gx++ {
-			if (gx*5+gy*3+100)%4 != 0 || (gx == 0 && gy == 0) {
+// drawMark renders the official mark centred at (cx, cy) at the given size
+// (the full 512-unit design scales to `size` pixels). glyph, when non-nil,
+// replaces the centre dot and draws in logo units around the centre.
+func drawMark(c *canvas, cx, cy int, size int, glyph func(cc *canvas, cx, cy int, u float64)) {
+	u := float64(size) / 512.0
+	r := float64(size) / 2
+
+	// Background disc with the logo's diagonal gradient.
+	for y := -size/2 - 1; y <= size/2+1; y++ {
+		for x := -size/2 - 1; x <= size/2+1; x++ {
+			dx, dy := float64(x), float64(y)
+			if math.Sqrt(dx*dx+dy*dy) > r+0.5 {
 				continue
 			}
-			x := cx + gx*m*2/7
-			y := cy + gy*m*2/7
-			col := p.alt
-			if (gx*7+gy*11+100)%3 == 0 {
-				col = p.ink
-			}
-			c.rect(x-arm/2, y-arm/2, x+arm/2+1, y+arm/2+1, col)
+			t := (dx + dy + 2*r) / (4 * r)
+			c.set(cx+x, cy+y, over(logoTo, logoFrom, 1-t))
 		}
 	}
-	c.rect(cx-arm*3/2, cy-arm/2, cx+arm*3/2, cy+arm/2, p.accent)
-	c.rect(cx-arm/2, cy-arm*3/2, cx+arm/2, cy+arm*3/2, p.accent)
+
+	whiteCol := hexRGB(white)
+	ringCol := over(logoTo, whiteCol, 0.9)
+	c.ring(cx, cy, 180*u, 20*u, ringCol)
+	// The spiral arc: due west, over the north, through east, to due south.
+	c.arc(cx, cy, 96*u, 20*u, 180, 450, ringCol)
+	c.disc(cx-int(math.Round(96*u)), cy, 10*u, ringCol) // round west cap
+	c.disc(cx, cy+int(math.Round(96*u)), 10*u, ringCol) // round south cap
+
+	if glyph != nil {
+		glyph(c, cx, cy, u)
+	} else {
+		c.disc(cx, cy, 28*u, over(logoTo, whiteCol, 0.95))
+	}
 }
 
-// renderIcon paints a 70x70 channel icon: solid navy, motif, thin frame.
-func renderIcon(name string, hue int) (image.Image, error) {
-	m, err := motifByName(name)
+// ---------- centre-dot glyph variants (logo units) ----------
+
+// padGlyph: a small gamepad — bold body, d-pad cross and two buttons.
+func padGlyph(c *canvas, cx, cy int, u float64) {
+	w := hexRGB(white)
+	dark := indigoDeep
+	bw, bh := int(148*u), int(94*u)
+	c.rrect(cx-bw/2, cy-bh/2, cx+bw/2, cy+bh/2, 42*u, w)
+	// d-pad: one bold cross
+	px, py := cx-int(34*u), cy+int(2*u)
+	c.rect(px-int(12*u), py-int(30*u), px+int(12*u), py+int(30*u), dark)
+	c.rect(px-int(30*u), py-int(12*u), px+int(30*u), py+int(12*u), dark)
+	// two face buttons
+	c.disc(cx+int(28*u), cy-int(16*u), 12*u, dark)
+	c.disc(cx+int(46*u), cy+int(14*u), 12*u, dark)
+}
+
+// questionGlyph: a bold question mark.
+func questionGlyph(c *canvas, cx, cy int, u float64) {
+	w := hexRGB(white)
+	c.arc(cx-int(4*u), cy-int(18*u), 34*u, 24*u, 170, 440, w)
+	c.line(cx-int(4*u), cy+int(16*u), cx+int(2*u), cy+int(30*u), 24*u, w)
+	c.disc(cx+int(4*u), cy+int(56*u), 13*u, w)
+}
+
+// gearGlyph: a toothed gear ring.
+func gearGlyph(c *canvas, cx, cy int, u float64) {
+	w := hexRGB(white)
+	c.ring(cx, cy, 34*u, 20*u, w)
+	for i := 0; i < 6; i++ {
+		a := float64(i) * 60 * math.Pi / 180
+		c.line(cx+int(math.Round(38*u*math.Cos(a))), cy+int(math.Round(38*u*math.Sin(a))),
+			cx+int(math.Round(56*u*math.Cos(a))), cy+int(math.Round(56*u*math.Sin(a))), 22*u, w)
+	}
+	c.disc(cx, cy, 13*u, w)
+}
+
+// ---------- scenes ----------
+
+type scene struct {
+	c *canvas
+	W int
+	H int
+	u float64 // design unit: H / 364
+}
+
+func newScene(w, h int) *scene {
+	return &scene{c: newCanvas(w, h), W: w, H: h, u: float64(h) / 364.0}
+}
+
+func (s *scene) backdrop(grid bool) {
+	s.c.diagGrad(sceneTop, sceneMid, sceneBot)
+	// Deterministic star specks in the upper field.
+	for i := 0; i < 42; i++ {
+		x := (i*97 + 23) % s.W
+		y := (i*53 + 11) % (s.H * 5 / 8)
+		a := 0.12 + float64((i*31)%40)/100
+		s.c.blend(x, y, indigoHi, a)
+		if i%4 == 0 {
+			s.c.blend((x+7)%s.W, (y+3)%(s.H*5/8), inkWhite, a*0.7)
+		}
+	}
+	if grid {
+		hy := s.H * 68 / 100
+		// Glow at the horizon.
+		s.c.discGlow(s.W/2, hy, float64(s.W)/3, indigoMid, 0.20)
+		// Verticals converging on the vanishing point.
+		for i := -14; i <= 14; i++ {
+			x0 := s.W/2 + i*s.W/22
+			s.c.blendLine(x0, hy, s.W/2+i*s.W/5, s.H, indigoMid, 0.28, 1)
+		}
+		// Receding horizontals.
+		for k, t := 0, 0.06; t < 1; k++ {
+			y := hy + int(math.Round(float64(s.H-hy)*t*t))
+			s.c.blendLine(0, y, s.W, y, indigoMid, 0.22, 1)
+			t += 0.055 * float64(k+1)
+		}
+		s.c.blendRect(0, hy, s.W, hy+1, indigoHi, 0.5)
+	}
+}
+
+func (s *scene) bug() {
+	size := s.H * 3 / 20
+	drawMark(s.c, s.W-size*3/2, s.H-size*3/2, size, nil)
+}
+
+func (c *canvas) blendLine(x0, y0, x1, y1 int, col rgb, a float64, thick int) {
+	steps := max(abs(x1-x0), abs(y1-y0), 1)
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		x := x0 + int(math.Round(float64(x1-x0)*t))
+		y := y0 + int(math.Round(float64(y1-y0)*t))
+		c.blend(x, y, col, a)
+		if thick > 1 {
+			c.blend(x, y+1, col, a)
+		}
+	}
+}
+
+func (c *canvas) blendRect(x0, y0, x1, y1 int, col rgb, a float64) {
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			c.blend(x, y, col, a)
+		}
+	}
+}
+
+// scene functions paint the central subject; (cx, cy) is the optical centre.
+
+func sceneMark(s *scene, cx, cy int) {
+	size := s.H * 3 / 5
+	s.c.discGlow(cx, cy, float64(size)/2, indigoMid, 0.5)
+	s.c.ring(cx, cy, float64(size)/2+float64(s.H)/22, float64(s.H)/180, over(indigoDeep, hexRGB(white), 0.35))
+	drawMark(s.c, cx, cy, size, nil)
+}
+
+func sceneBurst(s *scene, cx, cy int) {
+	size := s.H * 11 / 20
+	for i := 0; i < 24; i++ {
+		a := float64(i) * 15 * math.Pi / 180
+		r0 := float64(size) * 0.62
+		r1 := float64(size) * (0.95 + 0.18*float64(i%3))
+		col := indigoMid
+		if i%2 == 0 {
+			col = indigoHi
+		}
+		s.c.blendLine(cx+int(r0*math.Cos(a)), cy+int(r0*math.Sin(a)),
+			cx+int(r1*math.Cos(a)), cy+int(r1*math.Sin(a)), col, 0.35, 2)
+	}
+	drawMark(s.c, cx, cy, size, nil)
+}
+
+func sceneHorizon(s *scene, cx, cy int) {
+	hy := s.H * 68 / 100
+	s.c.discGlow(cx, hy, float64(s.W)/3.2, indigoMid, 0.3)
+	drawMark(s.c, cx, hy-int(s.H*19/100), s.H*2/5, nil)
+	// Faint reflection of the disc below the horizon line.
+	for i := 0; i < 5; i++ {
+		s.c.blendLine(cx-s.H/5+i*s.H/40, hy+4, cx-s.H/5+i*s.H/40+8, hy+4+i*2, indigoHi, 0.10, 1)
+	}
+}
+
+func scenePad(s *scene, cx, cy int) {
+	u := float64(s.H) / 364 * 1.5
+	w := hexRGB(white)
+	_ = w
+	s.c.glowDisc(cx, cy, float64(s.H)/3, indigoMid, 0.4)
+	bw, bh := int(300*u), int(180*u)
+	s.c.rrect(cx-bw/2, cy-bh/2, cx+bw/2, cy+bh/2, 70*u, indigoDeep)
+	s.c.rrect(cx-bw/2, cy-bh/2, cx+bw/2, cy+bh/2-8*int(u), 70*u, w)
+	// d-pad cross
+	px, py := cx-int(78*u), cy+int(4*u)
+	s.c.rect(px-int(16*u), py-int(52*u), px+int(16*u), py+int(52*u), indigoDeep)
+	s.c.rect(px-int(52*u), py-int(16*u), px+int(52*u), py+int(16*u), indigoDeep)
+	s.c.rect(px-int(11*u), py-int(45*u), px+int(11*u), py+int(45*u), indigoMid)
+	s.c.rect(px-int(45*u), py-int(11*u), px+int(45*u), py+int(11*u), indigoMid)
+	// four face buttons
+	for i, off := range [4][2]int{{0, -1}, {1, 0}, {0, 1}, {-1, 0}} {
+		bx := cx + int(78*u) + off[0]*int(30*u)
+		by := cy + int(4*u) + off[1]*int(30*u)
+		col := indigoDeep
+		if i == 0 {
+			col = indigoMid
+		}
+		s.c.disc(bx, by, 14*u, col)
+	}
+	// menu pips
+	s.c.disc(cx-int(10*u), cy-int(40*u), 7*u, indigoDeep)
+	s.c.disc(cx+int(10*u), cy-int(40*u), 7*u, indigoDeep)
+}
+
+func sceneLevels(s *scene, cx, cy int) {
+	w := hexRGB(white)
+	base := s.H * 78 / 100
+	widths := s.H / 5
+	for i := 0; i < 3; i++ {
+		h := s.H * (22 + 14*i) / 100
+		x0 := cx - widths*3/2 - s.H/40 + i*(widths+s.H/22)
+		col := indigoDeep
+		if i == 2 {
+			col = indigoHi
+		}
+		s.c.rrect(x0, base-h, x0+widths, base, float64(s.H)/90, col)
+		if i == 2 {
+			s.c.disc(x0+widths/2, base-h-s.H/22, float64(s.H)/70, w)
+			s.c.discGlow(x0+widths/2, base-h-s.H/22, float64(s.H)/40, indigoHi, 0.5)
+		}
+	}
+}
+
+func scenePodium(s *scene, cx, cy int) {
+	w := hexRGB(white)
+	base := s.H * 80 / 100
+	hts := [3]int{46, 62, 34} // 2nd, 1st, 3rd
+	for i, h := range hts {
+		x0 := cx - s.H*31/100 + i*s.H*22/100
+		col := indigoDeep
+		if i == 1 {
+			col = indigoMid
+		}
+		s.c.rrect(x0, base-s.H*h/100, x0+s.H*18/100, base, float64(s.H)/90, col)
+		s.c.blendRect(x0, base-s.H*h/100, x0+s.H*18/100, base-s.H*h/100+3, w, 0.6)
+	}
+	// Sparkle above the tallest step.
+	tx, ty := cx-s.H*22/100+9*s.H/100, base-s.H*62/100
+	for _, d := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		s.c.line(tx, ty, tx+d[0]*s.H/24, ty+d[1]*s.H/24, float64(s.H)/90, w)
+	}
+	s.c.disc(tx, ty, float64(s.H)/120, w)
+	s.c.discGlow(tx, ty, float64(s.H)/30, indigoHi, 0.5)
+}
+
+func sceneGear(s *scene, cx, cy int) {
+	u := float64(s.H) / 364
+	w := hexRGB(white)
+	s.c.discGlow(cx, cy, float64(s.H)/2.6, indigoMid, 0.4)
+	s.c.ring(cx, cy, 120*u, 44*u, indigoHi)
+	for i := 0; i < 10; i++ {
+		a := float64(i) * 36 * math.Pi / 180
+		s.c.line(cx+int(math.Round(120*u*math.Cos(a))), cy+int(math.Round(120*u*math.Sin(a))),
+			cx+int(math.Round(172*u*math.Cos(a))), cy+int(math.Round(172*u*math.Sin(a))), 40*u, indigoHi)
+	}
+	s.c.disc(cx, cy, 84*u, sceneMid)
+	drawMark(s.c, cx, cy, int(120*u), nil)
+	_ = w
+}
+
+func sceneOrbit(s *scene, cx, cy int) {
+	drawMark(s.c, cx, cy, s.H*2/5, nil)
+	for k, r := range [3]float64{0.30, 0.42, 0.54} {
+		rx, ry := float64(s.H)*r*1.35, float64(s.H)*r
+		a := float64(k) * 1.9
+		for t := 0.0; t < 360; t += 0.7 {
+			th := t * math.Pi / 180
+			x := cx + int(math.Round(rx*math.Cos(th)))
+			y := cy + int(math.Round(ry*math.Sin(th)))
+			s.c.blend(x, y, indigoHi, 0.20)
+		}
+		px := cx + int(math.Round(rx*math.Cos(a)))
+		py := cy + int(math.Round(ry*math.Sin(a)))
+		s.c.disc(px, py, float64(s.H)/60, inkWhite)
+		s.c.discGlow(px, py, float64(s.H)/32, indigoHi, 0.5)
+	}
+}
+
+func sceneWrench(s *scene, cx, cy int) {
+	w := hexRGB(white)
+	th := float64(s.H) / 22
+	// Handle: bottom-left to centre, then the open jaw (a 240-degree arc).
+	hx1, hy1 := cx-s.H/3, cy+s.H/4
+	hx2, hy2 := cx+s.H/22, cy-s.H/22
+	s.c.line(hx1, hy1, hx2, hy2, th*1.4, w)
+	jr := float64(s.H) / 8
+	jx, jy := float64(hx2)+jr/2, float64(hy2)-jr/2
+	s.c.arc(int(jx), int(jy), jr, th*1.6, 130, 360, w)
+	s.c.disc(int(jx-jr), int(jy), th*0.8, w)
+	// A couple of bolts.
+	for _, p := range [2][2]int{{cx + s.H/4, cy + s.H/6}, {cx + s.H/3, cy - s.H/12}} {
+		s.c.ring(p[0], p[1], float64(s.H)/32, float64(s.H)/70, indigoHi)
+	}
+}
+
+func scenePower(s *scene, cx, cy int) {
+	r := float64(s.H) / 4.4
+	th := float64(s.H) / 24
+	s.c.discGlow(cx, cy, r*1.9, indigoMid, 0.45)
+	w := hexRGB(white)
+	s.c.arc(cx, cy, r, th, 210, 330+360, w) // ring with a gap at the top
+	capA := 210 * math.Pi / 180
+	capB := (330 + 360) * math.Pi / 180
+	for _, a := range []float64{capA, capB} {
+		s.c.disc(cx+int(math.Round(r*math.Cos(a))), cy+int(math.Round(r*math.Sin(a))), th/2, w)
+	}
+	s.c.line(cx, cy-int(r)-int(th), cx, cy-int(r*0.25), th, w)
+}
+
+func sceneQuestion(s *scene, cx, cy int) {
+	u := float64(s.H) / 364 * 2.4
+	s.c.discGlow(cx, cy, float64(s.H)/2.4, indigoMid, 0.4)
+	questionGlyph(s.c, cx, cy-s.H/40, u)
+}
+
+func sceneRefresh(s *scene, cx, cy int) {
+	r := float64(s.H) / 4.2
+	th := float64(s.H) / 20
+	w := hexRGB(white)
+	s.c.discGlow(cx, cy, r*1.8, indigoMid, 0.4)
+	// Two arcs with clear gaps at the top-left and bottom-right.
+	s.c.arc(cx, cy, r, th, 295, 425, w)
+	s.c.arc(cx, cy, r, th, 115, 245, w)
+	// Tangent arrowheads at each trailing end, pointing along the cycle.
+	refreshHead(s, cx, cy, r, th, 425, w)
+	refreshHead(s, cx, cy, r, th, 245, w)
+}
+
+func refreshHead(s *scene, cx, cy int, r, th float64, aDeg float64, col rgb) {
+	pt := func(a, rr float64) (int, int) {
+		t := a * math.Pi / 180
+		return cx + int(math.Round(rr*math.Cos(t))), cy + int(math.Round(rr*math.Sin(t)))
+	}
+	tx, ty := pt(aDeg+8, r)
+	w1x, w1y := pt(aDeg-18, r+th*0.95)
+	w2x, w2y := pt(aDeg-18, r-th*0.95)
+	s.c.line(tx, ty, w1x, w1y, th*0.8, col)
+	s.c.line(tx, ty, w2x, w2y, th*0.8, col)
+}
+
+// ---------- renderers ----------
+
+type motifFunc func(s *scene, cx, cy int)
+
+func sceneByName(name string) (motifFunc, bool, error) {
+	gridScenes := map[string]motifFunc{
+		"horizon": sceneHorizon,
+	}
+	plain := map[string]motifFunc{
+		"mark":     sceneMark,
+		"burst":    sceneBurst,
+		"pad":      scenePad,
+		"levels":   sceneLevels,
+		"podium":   scenePodium,
+		"gear":     sceneGear,
+		"orbit":    sceneOrbit,
+		"wrench":   sceneWrench,
+		"power":    scenePower,
+		"question": sceneQuestion,
+		"refresh":  sceneRefresh,
+	}
+	if m, ok := gridScenes[name]; ok {
+		return m, true, nil
+	}
+	m, ok := plain[name]
+	if !ok {
+		return nil, false, fmt.Errorf("unknown motif %q", name)
+	}
+	return m, false, nil
+}
+
+// renderArt paints an article card or hero scene at the requested size.
+func renderArt(motif string, hue, w, h int) (image.Image, error) {
+	_, _, err := sceneByName(motif)
 	if err != nil {
 		return nil, err
+	}
+	s := newScene(w, h)
+	m, grid, _ := sceneByName(motif)
+	s.backdrop(grid)
+	m(s, w/2, h*47/100)
+	s.bug()
+	return s.c, nil
+}
+
+// Channel icon motifs: the official mark, or the mark with its centre dot
+// replaced by a channel glyph.
+func renderIcon(name string, hue int) (image.Image, error) {
+	glyphs := map[string]func(*canvas, int, int, float64){
+		"mark":          nil,
+		"mark-pad":      padGlyph,
+		"mark-question": questionGlyph,
+		"mark-gear":     gearGlyph,
+	}
+	glyph, ok := glyphs[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown icon motif %q (use mark, mark-pad, mark-question or mark-gear)", name)
 	}
 	c := newCanvas(70, 70)
-	p := paletteFor(hue)
-	c.fill(navy)
-	m(c, 35, 35, 58, p)
-	c.rect(0, 0, 70, 2, p.accent)
-	c.rect(0, 68, 70, 70, p.accent)
-	return c, nil
-}
-
-// renderArt paints a card or hero: gradient background, centred motif and
-// a footer bar.
-func renderArt(name string, hue, w, h int) (image.Image, error) {
-	m, err := motifByName(name)
-	if err != nil {
-		return nil, err
-	}
-	p := paletteFor(hue)
-	c := newCanvas(w, h)
-	c.gradient(p.bgTop, p.bgBottom)
-	m(c, w/2, h/2, h, p)
-	c.rect(0, h-h/36, w, h, p.accent)
+	drawMark(c, 35, 35, 68, glyph)
 	return c, nil
 }
 
@@ -393,7 +658,7 @@ func encodeJPEG(im image.Image) ([]byte, error) {
 			ppm.WriteByte(byte(bl >> 8))
 		}
 	}
-	cmd := exec.Command("cjpeg", "-quality", "85", "-baseline", "-sample", "1x1")
+	cmd := exec.Command("cjpeg", "-quality", "90", "-baseline", "-sample", "1x1")
 	cmd.Stdin = &ppm
 	out, err := cmd.Output()
 	if err != nil {
@@ -402,16 +667,16 @@ func encodeJPEG(im image.Image) ([]byte, error) {
 	return out, nil
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 func lerp(a, b rgb, t float64) rgb {
 	mix := func(x, y uint8) uint8 {
 		return uint8(math.Round(float64(x)*(1-t) + float64(y)*t))
 	}
 	return rgb{R: mix(a.R, b.R), G: mix(a.G, b.G), B: mix(a.B, b.B), A: 255}
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

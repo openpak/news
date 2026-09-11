@@ -29,8 +29,9 @@ import (
 )
 
 var (
-	reTopicID = regexp.MustCompile(`^[a-z][a-z0-9_]{2,63}$`)
-	reLocale  = regexp.MustCompile(`^[a-z]{2}-[A-Z]{2}$`)
+	reTopicID   = regexp.MustCompile(`^[a-z][a-z0-9_]{2,63}$`)
+	reLocale    = regexp.MustCompile(`^[a-z]{2}-[A-Z]{2}$`)
+	reNewsIDDir = regexp.MustCompile(`^[0-9]+$`)
 )
 
 type artSpec struct {
@@ -66,6 +67,11 @@ type retiredEntry struct {
 	TopicID string `json:"topic_id"`
 	NewsID  int64  `json:"news_id"`
 	Reason  string `json:"reason"`
+	// Topic is the channel's lineup block, copied here when the channel is
+	// removed from lineup.json while this article stays retired. It supplies
+	// the payload metadata the lineup no longer provides. Optional while the
+	// channel is still in the lineup.
+	Topic *channelSource `json:"topic,omitempty"`
 }
 
 type retiredFile struct {
@@ -120,14 +126,13 @@ func loadLineup(dir string) (*lineupSource, error) {
 		case strings.TrimSpace(ch.Description) == "" || len(ch.Description) > 120:
 			return nil, fmt.Errorf("channel %s: description must be 1..120 chars", ch.TopicID)
 		}
-		if err := checkArt(ch.Icon); err != nil {
+		if err := checkIconArt(ch.Icon); err != nil {
 			return nil, fmt.Errorf("channel %s icon: %w", ch.TopicID, err)
 		}
 		seen[ch.TopicID] = true
 	}
-	if len(l.Channels) == 0 {
-		return nil, fmt.Errorf("lineup.json lists no channels")
-	}
+	// An empty lineup is legal (every channel removed); the identity scan
+	// below still validates whatever article directories remain.
 	return &l, nil
 }
 
@@ -172,18 +177,26 @@ func loadArticle(path string) (*articleSource, error) {
 	if !hasSelf {
 		return nil, fmt.Errorf("%s: supported_languages must include the article language", path)
 	}
-	if err := checkArt(a.Art); err != nil {
+	if err := checkSceneArt(a.Art); err != nil {
 		return nil, fmt.Errorf("%s: art: %w", path, err)
 	}
 	return &a, nil
 }
 
-func checkArt(a artSpec) error {
-	if _, err := motifByName(a.Motif); err != nil {
-		return err
+// checkIconArt validates a channel icon motif (the official mark or a
+// dot-variant glyph).
+func checkIconArt(a artSpec) error {
+	switch a.Motif {
+	case "mark", "mark-pad", "mark-question", "mark-gear":
+		return nil
 	}
-	if a.Hue < 0 || a.Hue > 359 {
-		return fmt.Errorf("hue must be 0..359")
+	return fmt.Errorf("icon motif must be one of mark, mark-pad, mark-question, mark-gear (got %q)", a.Motif)
+}
+
+// checkSceneArt validates an article art motif.
+func checkSceneArt(a artSpec) error {
+	if _, _, err := sceneByName(a.Motif); err != nil {
+		return err
 	}
 	return nil
 }
@@ -256,52 +269,76 @@ type channelEntry struct {
 }
 
 type manifest struct {
-	Format      int            `json:"format"`
-	GeneratedAt string         `json:"generated_at_rfc3339"`
-	PublishedAt int64          `json:"published_at"`
-	Catalog     fileInfo       `json:"catalog"`
-	Channels    []channelEntry `json:"channels"`
+	Format      int              `json:"format"`
+	GeneratedAt string           `json:"generated_at_rfc3339"`
+	PublishedAt int64            `json:"published_at"`
+	Catalog     fileInfo         `json:"catalog"`
+	Channels    []channelEntry   `json:"channels"`
+	Removed     []removedChannel `json:"removed_channels"`
 }
 
-// ---------- build ----------
+// removedChannel records retirement fixtures for a channel that is no
+// longer in lineup.json. Their payloads come from the topic snapshot in
+// each retired.json entry, so identities stay serviceable after removal.
+type removedChannel struct {
+	TopicID  string         `json:"topic_id"`
+	Articles []articleEntry `json:"articles"`
+}
 
-// pruneStale removes previously built article directories that are not
-// active in this build, stale channel directories, and the whole retired
-// tree (which the build regenerates). Everything else is overwritten in
-// place by the build.
-func pruneStale(out string, l *lineupSource, active map[string]map[int64]bool) error {
-	known := map[string]bool{}
-	for _, ch := range l.Channels {
-		known[ch.TopicID] = true
+// markerName marks an output directory as created by this tool. Pruning
+// only ever happens in directories carrying this marker, and only for
+// paths recorded in the previous manifest — a directory that newsseed did
+// not build is never touched.
+const markerName = ".newsseed-managed"
+
+var markerContent = []byte("{\"tool\":\"newsseed\",\"format\":1}\n")
+
+// adoptSweep converts a pre-marker build directory: it removes exactly the
+// artifact names this tool generates (nothing else), so a retired article's
+// stale live payload cannot survive into the signed tree. Without it, an
+// upgraded directory would keep untracked outputs forever, because there is
+// no manifest to prune from.
+func adoptSweep(out string) error {
+	remove := func(rel string) (bool, error) {
+		p := filepath.Join(out, rel)
+		if _, err := os.Lstat(p); err != nil {
+			return false, nil // absent: nothing to sweep
+		}
+		fmt.Println("adopt: removing", rel)
+		return true, os.RemoveAll(p)
+	}
+	sweep := func(rels ...string) error {
+		for _, rel := range rels {
+			if _, err := remove(rel); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := sweep("retired", "catalog.msgpack", "manifest.json", markerName); err != nil {
+		return err
 	}
 	entries, err := os.ReadDir(out)
 	if err != nil {
 		return err
 	}
 	for _, e := range entries {
-		name := e.Name()
-		switch {
-		case !e.IsDir():
-			continue // catalog/manifest payloads are overwritten below
-		case name == "retired":
-			if err := os.RemoveAll(filepath.Join(out, name)); err != nil {
-				return err
-			}
-		case !known[name]:
-			if err := os.RemoveAll(filepath.Join(out, name)); err != nil {
-				return err
-			}
-		default:
-			arts, err := os.ReadDir(filepath.Join(out, name))
-			if err != nil {
-				return err
-			}
-			for _, a := range arts {
-				id := a.Name()
-				if a.IsDir() && reNewsIDDir.MatchString(id) && !active[name][mustAtoi(id)] {
-					if err := os.RemoveAll(filepath.Join(out, name, id)); err != nil {
-						return err
-					}
+		if !e.IsDir() || !reTopicID.MatchString(e.Name()) {
+			continue
+		}
+		arts, err := os.ReadDir(filepath.Join(out, e.Name()))
+		if err != nil {
+			return err
+		}
+		for _, a := range arts {
+			switch {
+			case a.IsDir() && reNewsIDDir.MatchString(a.Name()):
+				if err := sweep(filepath.Join(e.Name(), a.Name())); err != nil {
+					return err
+				}
+			case !a.IsDir() && (a.Name() == "detail.msgpack" || a.Name() == "icon.jpg" || a.Name() == "archives.msgpack"):
+				if err := sweep(filepath.Join(e.Name(), a.Name())); err != nil {
+					return err
 				}
 			}
 		}
@@ -309,14 +346,70 @@ func pruneStale(out string, l *lineupSource, active map[string]map[int64]bool) e
 	return nil
 }
 
-var reNewsIDDir = regexp.MustCompile(`^[0-9]+$`)
+// ---------- build ----------
 
-func mustAtoi(s string) int64 {
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		panic(err) // guarded by reNewsIDDir
+// dirIsEmpty reports whether the directory exists and has no entries.
+func dirIsEmpty(path string) (bool, error) {
+	entries, err := os.ReadDir(path)
+	if os.IsNotExist(err) {
+		return true, nil
 	}
-	return n
+	if err != nil {
+		return false, err
+	}
+	return len(entries) == 0, nil
+}
+
+// pruneStale removes previously built artifacts that this build no longer
+// produces. Safety rules:
+//
+//   - only directories carrying the newsseed marker are pruned at all;
+//   - only paths recorded in the previous manifest.json (plus the retired
+//     tree, which the marker covers) are removed, so anything newsseed did
+//     not create — notes, unrelated checkouts — survives a rerun.
+func pruneStale(out string, l *lineupSource, active map[string]map[int64]bool) error {
+	if _, err := os.Stat(filepath.Join(out, markerName)); os.IsNotExist(err) {
+		return nil // not ours (or built before markers existed): touch nothing
+	}
+	known := map[string]bool{}
+	for _, ch := range l.Channels {
+		known[ch.TopicID] = true
+	}
+	// Removal targets, as paths relative to out.
+	targets := map[string]bool{"retired": true}
+	if prev := prevManifest(out); prev != nil {
+		for _, ch := range prev.Channels {
+			if !known[ch.TopicID] {
+				targets[ch.TopicID] = true
+				continue
+			}
+			for _, ae := range ch.Articles {
+				if !active[ch.TopicID][ae.NewsID] {
+					targets[filepath.Join(ch.TopicID, strconv.FormatInt(ae.NewsID, 10))] = true
+				}
+			}
+		}
+	}
+	for rel := range targets {
+		if err := os.RemoveAll(filepath.Join(out, rel)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// prevManifest returns the previous build's manifest, or nil when it is
+// missing or unreadable (pruning then falls back to the retired tree only).
+func prevManifest(out string) *manifest {
+	raw, err := os.ReadFile(filepath.Join(out, "manifest.json"))
+	if err != nil {
+		return nil
+	}
+	var m manifest
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	return &m
 }
 
 func writeFile(out string, rel string, data []byte) (fileInfo, error) {
@@ -331,25 +424,41 @@ func writeFile(out string, rel string, data []byte) (fileInfo, error) {
 	return fileInfo{Path: rel, Size: len(data), SHA256: hex.EncodeToString(sum[:])}, nil
 }
 
-func build(sourceDir, out string, published time.Time, l *lineupSource, r *retiredFile) error {
+func build(sourceDir, out string, published time.Time, l *lineupSource, r *retiredFile, adopt bool) error {
 	// Load and index every article first so identity errors are found
-	// before anything is written.
+	// before anything is written. The index spans ALL channel directories,
+	// including channels no longer in lineup.json: retired identities stay
+	// serviceable after their channel is removed.
 	type slot struct {
 		topic   string
 		source  *articleSource
 		retired *retiredEntry
 	}
-	ids := map[int64]string{} // news_id -> topic, for global uniqueness
-	var slots []slot
-	activeByTopic := map[string]map[int64]bool{}
+	ids := map[int64]string{}                      // news_id -> topic, global uniqueness
+	index := map[string]map[int64]*articleSource{} // topic -> id -> source
+	retiredByTopic := map[string]map[int64]*retiredEntry{}
+	for i := range r.Retired {
+		e := &r.Retired[i]
+		if retiredByTopic[e.TopicID] == nil {
+			retiredByTopic[e.TopicID] = map[int64]*retiredEntry{}
+		}
+		retiredByTopic[e.TopicID][e.NewsID] = e
+	}
+	inLineup := map[string]bool{}
 	for _, ch := range l.Channels {
-		activeByTopic[ch.TopicID] = map[int64]bool{}
-		dir := filepath.Join(sourceDir, ch.TopicID)
+		inLineup[ch.TopicID] = true
+	}
+	loadTopic := func(topic string, requireLineup bool) error {
+		dir := filepath.Join(sourceDir, topic)
 		entries, err := os.ReadDir(dir)
 		if err != nil {
-			return fmt.Errorf("channel %s: %w", ch.TopicID, err)
+			if requireLineup {
+				return fmt.Errorf("channel %s: %w", topic, err)
+			}
+			return nil // a removed channel may leave no directory at all
 		}
-		var found int
+		index[topic] = map[int64]*articleSource{}
+		found := 0
 		for _, e := range entries {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 				continue
@@ -359,33 +468,68 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 				return err
 			}
 			if owner := ids[a.NewsID]; owner != "" {
-				return fmt.Errorf("news_id %d used by both %s and %s", a.NewsID, owner, ch.TopicID)
+				return fmt.Errorf("news_id %d used by both %s and %s", a.NewsID, owner, topic)
 			}
-			ids[a.NewsID] = ch.TopicID
-			s := slot{topic: ch.TopicID, source: a}
-			for i := range r.Retired {
-				if r.Retired[i].TopicID == ch.TopicID && r.Retired[i].NewsID == a.NewsID {
-					s.retired = &r.Retired[i]
-				}
-			}
-			slots = append(slots, s)
-			if s.retired == nil {
-				activeByTopic[ch.TopicID][a.NewsID] = true
+			ids[a.NewsID] = topic
+			index[topic][a.NewsID] = a
+			if _, isRetired := retiredByTopic[topic][a.NewsID]; !isRetired && !requireLineup {
+				return fmt.Errorf("article %s/%d is not retired but channel %s is no longer in lineup.json; retire it (with a topic snapshot) or restore the channel",
+					topic, a.NewsID, topic)
 			}
 			found++
 		}
-		if found == 0 {
-			return fmt.Errorf("channel %s has no articles under %s", ch.TopicID, dir)
+		if requireLineup && found == 0 {
+			return fmt.Errorf("channel %s has no articles under %s", topic, dir)
+		}
+		return nil
+	}
+	for _, ch := range l.Channels {
+		if err := loadTopic(ch.TopicID, true); err != nil {
+			return err
+		}
+	}
+	extra, err := os.ReadDir(sourceDir)
+	if err != nil {
+		return err
+	}
+	for _, e := range extra {
+		if !e.IsDir() || inLineup[e.Name()] {
+			continue
+		}
+		if !reTopicID.MatchString(e.Name()) {
+			return fmt.Errorf("directory %q under %s is not a valid topic id", e.Name(), sourceDir)
+		}
+		if err := loadTopic(e.Name(), false); err != nil {
+			return err
+		}
+	}
+
+	activeByTopic := map[string]map[int64]bool{}
+	var slots []slot
+	for _, ch := range l.Channels {
+		activeByTopic[ch.TopicID] = map[int64]bool{}
+		for id, a := range index[ch.TopicID] {
+			s := slot{topic: ch.TopicID, source: a}
+			if re, isRetired := retiredByTopic[ch.TopicID][id]; isRetired {
+				s.retired = re
+			} else {
+				activeByTopic[ch.TopicID][id] = true
+			}
+			slots = append(slots, s)
 		}
 	}
 	for i := range r.Retired {
 		e := &r.Retired[i]
-		if ids[e.NewsID] != e.TopicID {
-			return fmt.Errorf("retired.json names unknown article %s/%d; remove the entry or restore the source",
-				e.TopicID, e.NewsID)
+		if _, sourced := index[e.TopicID][e.NewsID]; !sourced {
+			return fmt.Errorf("retired.json names article %s/%d whose source file is missing; restore channels/%s/%d.json",
+				e.TopicID, e.NewsID, e.TopicID, e.NewsID)
 		}
 		if strings.TrimSpace(e.Reason) == "" {
 			return fmt.Errorf("retired entry %s/%d needs a reason", e.TopicID, e.NewsID)
+		}
+		if !inLineup[e.TopicID] && e.Topic == nil {
+			return fmt.Errorf("retired entry %s/%d needs a \"topic\" snapshot now that channel %s is out of lineup.json (copy the channel block there)",
+				e.TopicID, e.NewsID, e.TopicID)
 		}
 	}
 
@@ -394,8 +538,34 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 	}
 	// A rerun updates in place, so stale artifacts of articles that were
 	// retired, renumbered or removed since the last build must not survive
-	// as active outputs (or be signed by sign-seed.sh).
-	if err := pruneStale(out, l, activeByTopic); err != nil {
+	// as active outputs (or be signed by sign-seed.sh). Pruning is gated on
+	// the marker and the previous manifest (see pruneStale). Directories
+	// from before markers existed have no manifest to prune from, so they
+	// need an explicit --adopt migration first.
+	markerPath := filepath.Join(out, markerName)
+	if _, err := os.Stat(markerPath); os.IsNotExist(err) {
+		empty, err := dirIsEmpty(out)
+		if err != nil {
+			return err
+		}
+		if !empty {
+			if !adopt {
+				return fmt.Errorf("%s exists without a newsseed marker (a pre-marker build or a foreign directory); use a fresh --out, or pass --adopt to migrate it (this removes its previously generated seed artifacts first)", out)
+			}
+			fmt.Printf("adopting %s: sweeping generated seed artifacts\n", out)
+			if err := adoptSweep(out); err != nil {
+				return err
+			}
+		}
+	} else {
+		if adopt {
+			fmt.Println("marker already present; --adopt is unnecessary")
+		}
+		if err := pruneStale(out, l, activeByTopic); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(markerPath, markerContent, 0644); err != nil {
 		return err
 	}
 
@@ -417,6 +587,12 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 			if s.topic == ch.TopicID && s.retired == nil {
 				active = append(active, s)
 			}
+		}
+		sort.Slice(active, func(i, j int) bool { return active[i].source.NewsID > active[j].source.NewsID })
+		var archiveEntries []newsformat.Map
+		for _, s := range active {
+			archiveEntries = append(archiveEntries, newsformat.ArchiveEntry(s.source.NewsID,
+				s.source.Language, articleURL(ch.TopicID, s.source.NewsID, "summary")))
 		}
 		pubAt, lastAt := published.UTC().Unix(), published.UTC().Unix()
 		if len(active) > 0 {
@@ -453,7 +629,7 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 			entry.Files["icon"] = fi
 		}
 		if fi, err := writeFile(out, filepath.Join(ch.TopicID, "archives.msgpack"),
-			mustEncode(newsformat.Archives())); err != nil {
+			mustEncode(newsformat.Archives(archiveEntries...))); err != nil {
 			return err
 		} else {
 			entry.Files["archives"] = fi
@@ -500,6 +676,12 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 				}
 			} else {
 				ae.State = "active"
+				if fi, err := writeFile(out, filepath.Join(dir, "summary.msgpack"),
+					mustEncode(payload.Summary(articleURL(ch.TopicID, a.NewsID, "article")))); err != nil {
+					return err
+				} else {
+					ae.Files["summary"] = fi
+				}
 				if fi, err := writeFile(out, filepath.Join(dir, "article.msgpack"),
 					mustEncode(payload.Payload())); err != nil {
 					return err
@@ -531,6 +713,72 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 		man.Channels = append(man.Channels, entry)
 	}
 
+	// Retirement fixtures for channels no longer in the lineup: their
+	// payloads come from the topic snapshot recorded in retired.json.
+	for i := range r.Retired {
+		e := &r.Retired[i]
+		if inLineup[e.TopicID] {
+			continue
+		}
+		a := index[e.TopicID][e.NewsID]
+		snap := e.Topic
+		if snap.TopicID == "" {
+			snap.TopicID = e.TopicID
+		}
+		if err := checkIconArt(snap.Icon); err != nil {
+			return fmt.Errorf("retired entry %s/%d topic snapshot icon: %w", e.TopicID, e.NewsID, err)
+		}
+		icon, err := renderJPEG("icon", snap.Icon.Motif, snap.Icon.Hue, 70, 70)
+		if err != nil {
+			return fmt.Errorf("retired entry %s/%d icon: %w", e.TopicID, e.NewsID, err)
+		}
+		card, err := renderJPEG("card", a.Art.Motif, a.Art.Hue, 358, 201)
+		if err != nil {
+			return fmt.Errorf("retired entry %s/%d card: %w", e.TopicID, e.NewsID, err)
+		}
+		hero, err := renderJPEG("hero", a.Art.Motif, a.Art.Hue, 800, 364)
+		if err != nil {
+			return fmt.Errorf("retired entry %s/%d hero: %w", e.TopicID, e.NewsID, err)
+		}
+		payload := newsformat.Article{
+			NewsID: a.NewsID, PublishedAt: a.stamp(published),
+			ExpireAt: a.stamp(published) + int64(a.LifetimeDays)*86400,
+			Language: a.Language, SupportedLanguages: a.SupportedLanguages,
+			TopicID: e.TopicID, TopicName: snap.Name, TopicPublisher: snap.Publisher,
+			TopicDescription: snap.Description, TopicImage: icon,
+			Title: a.Title, ListImage: card, Footer: a.footer(),
+			BodyText: a.Body, BodyImage: hero, BodyImageHeight: 364,
+		}
+		fi, err := writeFile(out, filepath.Join("retired", e.TopicID,
+			strconv.FormatInt(a.NewsID, 10), "article.msgpack"),
+			mustEncode(payload.ExpiredPayload()))
+		if err != nil {
+			return err
+		}
+		placed := false
+		for j := range man.Removed {
+			if man.Removed[j].TopicID == e.TopicID {
+				man.Removed[j].Articles = append(man.Removed[j].Articles, articleEntry{
+					NewsID: a.NewsID, Title: a.Title, State: "retired",
+					PublishedAt: payload.PublishedAt, ExpireAt: payload.ExpireAt,
+					Art: a.Art.Motif, Reason: e.Reason,
+					Files: map[string]fileInfo{"article-expired": fi},
+				})
+				placed = true
+				break
+			}
+		}
+		if !placed {
+			man.Removed = append(man.Removed, removedChannel{TopicID: e.TopicID,
+				Articles: []articleEntry{{
+					NewsID: a.NewsID, Title: a.Title, State: "retired",
+					PublishedAt: payload.PublishedAt, ExpireAt: payload.ExpireAt,
+					Art: a.Art.Motif, Reason: e.Reason,
+					Files: map[string]fileInfo{"article-expired": fi},
+				}}})
+		}
+	}
+
 	if fi, err := writeFile(out, "catalog.msgpack", mustEncode(newsformat.Catalog(catalogChannels))); err != nil {
 		return err
 	} else {
@@ -546,6 +794,11 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 
 func (a *articleSource) stamp(published time.Time) int64 {
 	return published.UTC().Unix()
+}
+
+func articleURL(topic string, id int64, resource string) string {
+	// Keep News resources on the hostname already redirected by the installer.
+	return fmt.Sprintf("https://bcat-topics-lp1.cdn.nintendo.net/openpak/v1/topics/%s/news/%d/%s", topic, id, resource)
 }
 
 func (a *articleSource) footer() string {
@@ -592,6 +845,7 @@ func run() error {
 	source := flag.String("source", "channels", "channel source directory")
 	out := flag.String("out", "", "build output directory (created or updated in place)")
 	published := flag.String("published", "", "pin the publication time, RFC3339 with UTC offset")
+	adopt := flag.Bool("adopt", false, "migrate a pre-marker output directory (sweeps its generated seed artifacts)")
 	list := flag.Bool("list", false, "print the inventory and exit")
 	var retire, unretire idList
 	flag.Var(&retire, "retire", "retire article topic/news_id (repeatable)")
@@ -685,7 +939,7 @@ func run() error {
 		}
 		return nil
 	}
-	if err := build(*source, *out, when, l, r); err != nil {
+	if err := build(*source, *out, when, l, r, *adopt); err != nil {
 		return err
 	}
 	fmt.Printf("Seed built into %s (published_at %s).\n", *out, when.Format(time.RFC3339))
@@ -694,17 +948,32 @@ func run() error {
 }
 
 func printInventory(source string, l *lineupSource, r *retiredFile) error {
-	_ = source
-	fmt.Println("topic_id\tnews_id\tstate\ttitle")
+	_ = r
+	inLineup := map[string]bool{}
 	for _, ch := range l.Channels {
-		dir := filepath.Join(source, ch.TopicID)
-		entries, err := os.ReadDir(dir)
+		inLineup[ch.TopicID] = true
+	}
+	fmt.Println("topic_id\tnews_id\tstate\ttitle")
+	var dirs []string
+	entries, err := os.ReadDir(source)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
+		}
+	}
+	sort.Strings(dirs)
+	for _, topic := range dirs {
+		dir := filepath.Join(source, topic)
+		files, err := os.ReadDir(dir)
 		if err != nil {
 			return err
 		}
 		var ids []int64
 		byID := map[int64]*articleSource{}
-		for _, e := range entries {
+		for _, e := range files {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 				continue
 			}
@@ -718,10 +987,12 @@ func printInventory(source string, l *lineupSource, r *retiredFile) error {
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 		for _, id := range ids {
 			state := "active"
-			if r.has(ch.TopicID, id) {
+			if r.has(topic, id) {
 				state = "RETIRED"
+			} else if !inLineup[topic] {
+				state = "UNRETIRED (channel removed)"
 			}
-			fmt.Printf("%s\t%d\t%s\t%s\n", ch.TopicID, id, state, byID[id].Title)
+			fmt.Printf("%s\t%d\t%s\t%s\n", topic, id, state, byID[id].Title)
 		}
 	}
 	return nil

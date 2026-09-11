@@ -6,7 +6,9 @@
       "publisher": "OpenPak",
       "description": "Announcements and milestones from the OpenPak network.",
       "important": false,
-      "icon": { "motif": "beacon", "hue": 212 }
+      "icon": {
+        "motif": "mark"
+      }
     },
     {
       "topic_id": "openpak_games",
@@ -14,7 +16,9 @@
       "publisher": "OpenPak",
       "description": "Supported games, server features and title-specific updates.",
       "important": false,
-      "icon": { "motif": "pad", "hue": 145 }
+      "icon": {
+        "motif": "mark-pad"
+      }
     },
     {
       "topic_id": "openpak_workshop",
@@ -22,7 +26,9 @@
       "publisher": "OpenPak",
       "description": "How OpenPak works: development notes from the team.",
       "important": false,
-      "icon": { "motif": "gear", "hue": 275 }
+      "icon": {
+        "motif": "mark-gear"
+      }
     },
     {
       "topic_id": "openpak_help",
@@ -30,7 +36,9 @@
       "publisher": "OpenPak",
       "description": "Setup, troubleshooting and practical guides.",
       "important": false,
-      "icon": { "motif": "buoy", "hue": 18 }
+      "icon": {
+        "motif": "mark-question"
+      }
     }
   ]
 }

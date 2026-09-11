@@ -2,9 +2,14 @@
   "news_id": 2609100202,
   "title": "How your console finds our channels",
   "body": "Channel discovery is a chain of small documents. The console first downloads the catalog, a list of channels with names and publishers. For each channel you look at, it fetches a detail record, the channel icon, and an archives list that will one day carry downloadable articles. Our server answers each step with its own signed container, and server logs show a real console walking this exact path: catalog, then icon and detail, then the archive request that used to fail. The archive list answers empty for now because its entry format is still being traced from the console's own parser, and we will not guess it.",
-  "footer": "OpenPak Workshop — how it works.",
+  "footer": "OpenPak Workshop \u2014 how it works.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 14,
-  "art": { "motif": "orbit", "hue": 285 }
+  "art": {
+    "motif": "orbit"
+  }
 }

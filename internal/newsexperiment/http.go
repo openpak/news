@@ -11,20 +11,22 @@
 //
 // Routes are derived from the directory, so a channel appears as soon as
 // its three fixtures exist; the catalog is never decoded here because the
-// CDN holds no keys. Deeper subdirectories (per-article containers) and a
-// root "retired" tree are prepared artifacts, not served routes. Unknown
-// routes fail explicitly rather than inventing a successful response.
+// CDN holds no keys. A tree with no channel directories serves the (empty)
+// catalog alone — the builder's answer to "every channel retired/removed".
+// Deeper subdirectories (per-article containers) and a root "retired" tree
+// are prepared artifacts, not served routes. Unknown routes fail explicitly
+// rather than inventing a successful response.
 package newsexperiment
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/openpak/news/internal/bcatcontainer"
@@ -54,6 +56,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 	}
 	type channel struct {
 		detail, icon, archives []byte
+		articles               map[string]map[string][]byte
 	}
 	channels := map[string]channel{}
 	for _, e := range entries {
@@ -75,10 +78,36 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 			}
 			*f.dst = b
 		}
+		ch.articles = map[string]map[string][]byte{}
+		children, err := os.ReadDir(filepath.Join(dir, topic))
+		if err != nil {
+			return nil, err
+		}
+		for _, child := range children {
+			if !child.IsDir() {
+				continue
+			}
+			id, err := strconv.ParseUint(child.Name(), 10, 32)
+			if err != nil || id == 0 || strconv.FormatUint(id, 10) != child.Name() {
+				return nil, fmt.Errorf("invalid article directory %s/%s", topic, child.Name())
+			}
+			resources := map[string][]byte{}
+			for _, resource := range []string{"summary", "article"} {
+				data, err := loadFixture(filepath.Join(dir, topic, child.Name(), resource+".bcat"))
+				if err != nil {
+					return nil, fmt.Errorf("article %s/%s: %w", topic, child.Name(), err)
+				}
+				resources[resource] = data
+			}
+			ch.articles[child.Name()] = resources
+		}
 		channels[topic] = ch
 	}
+	// An empty lineup is a legitimate state (every channel retired or
+	// removed): the catalog fixture itself describes it, so serve it. Its
+	// acceptance by the Find Channels UI on hardware is untested.
 	if len(channels) == 0 {
-		return nil, errors.New("no channel fixture directories found")
+		logger.Warn("no channel fixture directories; serving an empty catalog")
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/nx/v1/topics/catalog", serveFixture(catalog, "catalog", logger))
@@ -86,6 +115,12 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/detail", serveFixture(ch.detail, topic+"/detail", logger))
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/icon", serveFixture(ch.icon, topic+"/icon", logger))
 		mux.HandleFunc("GET /api/nx/v2/topics/"+topic+"/online_archives", serveFixture(ch.archives, topic+"/archives", logger))
+		for id, resources := range ch.articles {
+			for name, data := range resources {
+				label := topic + "/" + id + "/" + name
+				mux.HandleFunc("GET /openpak/v1/topics/"+topic+"/news/"+id+"/"+name, serveFixture(data, label, logger))
+			}
+		}
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

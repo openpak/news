@@ -2,9 +2,14 @@
   "news_id": 2609100101,
   "title": "Outbound players share a world on OpenPak",
   "body": "Outbound's multiplayer runs on OpenPak. Two players in our test rig now share one world through our own server: joining fresh or returning, picking up items for each other, leaving and rejoining without ghosts. The game's cloud refuses replacement accounts, so OpenPak hosts the multiplayer itself, running the game's exact network code headless. On the console side, linking a real Switch profile through the stock sign-in flow worked on 7 September, which clears the way for console playtests.",
-  "footer": "OpenPak Games — playable, not promised.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 14,
-  "art": { "motif": "pad", "hue": 145 }
+  "art": {
+    "motif": "pad"
+  }
 }

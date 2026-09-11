@@ -84,12 +84,13 @@ func TestMultiChannelRoutes(t *testing.T) {
 			t.Fatalf("unknown route %s accepted: %d", path, r.Code)
 		}
 	}
-	// Prepared per-article artifacts are not routes.
+	// Only the explicit summary/article resources are exposed.
 	art := filepath.Join(dir, "openpak_news", "2609100001")
 	if err := os.MkdirAll(art, 0755); err != nil {
 		t.Fatal(err)
 	}
 	fixture(t, art, "article.bcat")
+	fixture(t, art, "summary.bcat")
 	h, err = Handler(dir, nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -98,6 +99,27 @@ func TestMultiChannelRoutes(t *testing.T) {
 	h.ServeHTTP(r, httptest.NewRequest("GET", "/api/nx/v1/topics/openpak_news/2609100001/article", nil))
 	if r.Code != 404 {
 		t.Fatal("article container served as a route")
+	}
+	for _, resource := range []string{"summary", "article"} {
+		r = httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/topics/openpak_news/news/2609100001/"+resource, nil))
+		want, _ := os.ReadFile(filepath.Join(art, resource+".bcat"))
+		if r.Code != 200 || !bytes.Equal(r.Body.Bytes(), want) {
+			t.Fatal("resource route mismatch", resource)
+		}
+	}
+	for _, resource := range []string{"article-expired", "card", "manifest.json"} {
+		r = httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/topics/openpak_news/news/2609100001/"+resource, nil))
+		if r.Code != 404 {
+			t.Fatal("unapproved resource exposed", resource)
+		}
+	}
+	if err := os.Remove(filepath.Join(art, "summary.bcat")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Handler(dir, nil, nil); err == nil {
+		t.Fatal("incomplete article accepted")
 	}
 }
 
@@ -151,10 +173,21 @@ func TestHandlerRejectsBadLayouts(t *testing.T) {
 			t.Fatal("invalid topic directory accepted")
 		}
 	})
-	t.Run("no channels", func(t *testing.T) {
+	t.Run("empty lineup serves the catalog", func(t *testing.T) {
 		dir := writeTree(t)
-		if _, err := Handler(dir, nil, nil); err == nil {
-			t.Fatal("catalog without channel directories accepted")
+		h, err := Handler(dir, nil, nil)
+		if err != nil {
+			t.Fatalf("catalog-only tree rejected: %v", err)
+		}
+		r := httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "/api/nx/v1/topics/catalog", nil))
+		if r.Code != 200 || string(r.Body.Bytes()[:4]) != "bcat" {
+			t.Fatalf("catalog not served: code=%d", r.Code)
+		}
+		r = httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "/api/nx/v1/topics/openpak_news/detail", nil))
+		if r.Code != 404 {
+			t.Fatal("topic route served without channel fixtures")
 		}
 	})
 	t.Run("json fixture rejected", func(t *testing.T) {

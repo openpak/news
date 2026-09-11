@@ -2,9 +2,14 @@
   "news_id": 2609100003,
   "title": "The network behind the news",
   "body": "OpenPak is more than channels. A retail Switch can already create a profile, link it to an OpenPak account, see friends and play online, with no Nintendo service and no third-party network in the path. Our status page at status.openpak.org watches the services consoles depend on, from account sign-in to licence checks, and reports what it finds in the open. The same network carries the game servers and now the News. When something breaks, the status page says what and where before you have to wonder.",
-  "footer": "status.openpak.org — checks you can read.",
+  "footer": "status.openpak.org \u2014 checks you can read.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 14,
-  "art": { "motif": "orbit", "hue": 205 }
+  "art": {
+    "motif": "horizon"
+  }
 }

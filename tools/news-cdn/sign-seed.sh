@@ -35,6 +35,29 @@ done
   echo "usage: $0 -i BUILD_DIR -o SIGNED_DIR -k SIGNING_PEM -a AES_KEY_FILE [-x N] [-f]" >&2; exit 2; }
 [[ -d "$in_dir" ]] || { echo "no build dir: $in_dir" >&2; exit 1; }
 [[ -f "$signing" && -f "$aes" ]] || { echo "key files missing" >&2; exit 1; }
+
+# Path-overlap guards: -f removes the output directory before signing, so
+# it must never be the input directory, inside it, contain it, or contain
+# a key file — otherwise signing could destroy its own inputs.
+abs() { realpath -m -- "$1"; }
+overlaps() { # true when a == b or either contains the other
+  local a=$1 b=$2
+  [[ "$a" == "$b" || "$a" == "$b"/* || "$b" == "$a"/* ]]
+}
+in_abs=$(abs "$in_dir")
+out_abs=$(abs "$out_dir")
+if overlaps "$in_abs" "$out_abs"; then
+  echo "input and output directories must not overlap: $in_dir vs $out_dir" >&2; exit 1
+fi
+for key in "$signing" "$aes"; do
+  key_abs=$(abs "$key")
+  if overlaps "$key_abs" "$out_abs"; then
+    echo "key file $key must live outside the output directory $out_dir" >&2; exit 1
+  fi
+  if [[ "$key_abs" == "$in_abs"/* ]]; then
+    echo "key file $key must live outside the build directory $in_dir" >&2; exit 1
+  fi
+done
 if [[ -e "$out_dir" ]]; then
   if [[ "$force" == 1 ]]; then rm -rf "$out_dir"; else
     echo "output exists: $out_dir (use -f to replace)" >&2; exit 1; fi
@@ -88,5 +111,7 @@ if [[ "$fail" == 1 ]]; then
   exit 1
 fi
 echo "$count containers signed and verified in $out_dir"
-( cd "$out_dir" && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS )
-echo "checksums: $out_dir/SHA256SUMS"
+# SHA256SUMS excludes itself: verifying with 'sha256sum -c SHA256SUMS'
+# would fail on a file that contains its own (chicken-and-egg) digest.
+( cd "$out_dir" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS )
+echo "checksums: $out_dir/SHA256SUMS (self-excluded; verify with sha256sum -c)"

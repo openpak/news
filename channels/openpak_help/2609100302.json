@@ -1,10 +1,15 @@
 {
   "news_id": 2609100302,
   "title": "When News will not load, read this",
-  "body": "Most News failures we have seen end in one number: 0x167B, the console's SSL error. Our own path to working News went through three separate causes, in order: the News hostname missing from the DNS redirects, a TLS setup the News downloader did not accept, and the missing edge token described in the Workshop. If channels will not load, check that both patches are installed and that you rebooted after installing, confirm the installer's DNS list mentions the News host, then try the probe's ZL test, which reports the exact numeric result to send us.",
-  "footer": "OpenPak Help — ask us anything.",
+  "body": "Most News failures we have seen end in one number: 0x167B, the console's SSL error. Two causes are confirmed on our path: the News hostname missing from the DNS redirects, and the missing edge token described in the Workshop. We also aligned the server's TLS settings with the console as a precaution, but no TLS incompatibility was ever proven on this path, and both of the downloader's tested connection profiles succeeded once the real causes were fixed. If channels will not load, check that both patches are installed and that you rebooted after installing, confirm the installer's DNS list mentions the News host, then try the probe's ZL test, which reports the exact numeric result to send us.",
+  "footer": "OpenPak Help \u2014 ask us anything.",
   "language": "en-GB",
-  "supported_languages": ["en-GB", "en-US"],
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
   "lifetime_days": 30,
-  "art": { "motif": "beacon", "hue": 0 }
+  "art": {
+    "motif": "question"
+  }
 }
