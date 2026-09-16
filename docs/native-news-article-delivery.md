@@ -92,6 +92,76 @@ Rollback: set the experimental quadlet image to v005 and volume to cdn-v002,
 daemon-reload and restart. v004/cdn-v001 remains available for the original
 single-channel test. Preserve unrelated Traefik configuration.
 
+## Firmware-driven reception (2026-09-16)
+
+The missing half of the BCAT route — subscribe, then receive — turns out to
+be reachable over IPC rather than only through the Find Channels UI. libnx
+`news.h` exposes, and switchbrew documents, four INewsService commands:
+
+| Cmd | Name |
+| --- | --- |
+| 30100 | GetSubscriptionStatus |
+| 30101 | GetTopicList |
+| 30300 | RequestImmediateReception |
+| 40100 | SetSubscriptionStatus |
+
+Each service exposes a permission mask — news:p 0x1, news:c 0x2, news:v 0x4,
+news:m 0xd — and these commands are split across them, so no single
+restricted service has all four. news:a is masked 0xffffffff and the probe
+already opens it, so it uses that rather than deriving the exact split from
+an undocumented bit mapping. So probe **v0.21**
+(D-pad Down) does the same for `openpak_news` with full diagnostics —
+topic list, per-filter result codes, record count before and after;
+from that call onward the News module does the download, signature check,
+decryption and storage, and the stock applet renders the result. No article
+bytes pass through homebrew, and no server change is needed — it runs
+against the deployed v006 fixtures, with the existing patches and DNS.
+
+Open: the filter argument is a NUL-terminated string whose accepted form is
+undocumented. Three spellings (`topic_id='openpak_news'`, `openpak_news`,
+`topic_id="openpak_news"`) are probed read-only through GetSubscriptionStatus
+and only a filter naming our own topic is ever used to write — `"1"` would
+subscribe the console to every topic. The per-candidate result codes from
+the first hardware run are the finding, whatever they say.
+
+If reception works, `latest_news_urls` and the refresh schedule stay the
+next unknowns: an immediate receive is not proof of unattended refresh.
+
+## Local sync fallback (2026-09-16)
+
+If the firmware downloader cannot be driven, a second path reuses the
+mechanism hardware already accepted in the v0.12 local test:
+`newsPostLocalNews` takes a MessagePack article directly. Here homebrew
+downloads and the firmware only stores and renders.
+
+So the seed's decoded `article.msgpack` is now also served unwrapped:
+
+- `tools/news-cdn/sign-seed.sh` copies each article payload into the signed
+  tree as `<topic>/<news_id>/local.msgpack`. No key is involved.
+- `/openpak/v1/local/index` lists one `<topic> <news_id> <bytes>` line per
+  postable article, sorted, so two builds of a tree serve identical bytes.
+- `/openpak/v1/local/<topic>/news/<news_id>` serves that payload verbatim.
+- Probe **v0.20**, D-pad Up, downloads the index, downloads each article not
+  in `sd:/switch/openpak-news-probe/posted.txt`, and posts it.
+
+This is the fallback, not the goal: what it does **not** need is the
+BCAT verification-key patch, the
+edge-token patch, the DNS redirect, a container, an AES or signing key, an
+edge token. It connects to the OpenPak address with the public OpenPak CA —
+the transport v0.18 already proved from homebrew. What it does not provide:
+background refresh. The player runs the NRO; that is the refresh.
+
+Deploy: rebuild the seed, re-sign (the script now emits `local.msgpack`),
+deploy as a new image + fixture directory and restart. cdn-v003 predates the
+sync routes, so its index would be empty. Rollback is the previous image;
+these routes are additive and change no existing response.
+
+Unverified: whether the applet renders an article whose `topic_id` is an
+OpenPak channel rather than a known Nintendo one. The v0.12 article that
+rendered used `nx_news`; the seed articles carry their own channel id with
+full topic name, image and description in the payload. If the cards do not
+appear, that field is the first thing to test.
+
 ## Hardware check
 
 With existing patches and OpenPak DNS, reopen News → Find Channels → OpenPak
