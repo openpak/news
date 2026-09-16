@@ -57,6 +57,7 @@ func TestMultiChannelRoutes(t *testing.T) {
 		"/api/nx/v1/topics/openpak_news/detail",
 		"/api/nx/v1/topics/openpak_news/icon",
 		"/api/nx/v2/topics/openpak_news/online_archives?l=en-GB",
+		"/api/nx/v1/topics/openpak_news/archives",
 		"/api/nx/v1/topics/openpak_games/detail",
 		"/api/nx/v1/topics/openpak_games/icon",
 		"/api/nx/v2/topics/openpak_games/online_archives",
@@ -98,8 +99,14 @@ func TestMultiChannelRoutes(t *testing.T) {
 	}
 	r := httptest.NewRecorder()
 	h.ServeHTTP(r, httptest.NewRequest("GET", "/api/nx/v1/topics/openpak_news/2609100001/article", nil))
-	if r.Code != 404 {
-		t.Fatal("article container served as a route")
+	// The native module's downloader asked for exactly this path on
+	// hardware (2026-09-16), so it serves the article container.
+	want, err := os.ReadFile(filepath.Join(art, "article.bcat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Code != 200 || !bytes.Equal(r.Body.Bytes(), want) {
+		t.Fatal("v1 article route mismatch")
 	}
 	for _, resource := range []string{"summary", "article"} {
 		r = httptest.NewRecorder()

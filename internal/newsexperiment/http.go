@@ -137,10 +137,16 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/detail", serveFixture(ch.detail, topic+"/detail", logger))
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/icon", serveFixture(ch.icon, topic+"/icon", logger))
 		mux.HandleFunc("GET /api/nx/v2/topics/"+topic+"/online_archives", serveFixture(ch.archives, topic+"/archives", logger))
+		// The native module's downloader asks the v1 topic paths (observed
+		// 2026-09-16): channel archives and per-article containers.
+		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/archives", serveFixture(ch.archives, topic+"/archives", logger))
 		for id, resources := range ch.articles {
 			for name, data := range resources {
 				label := topic + "/" + id + "/" + name
 				mux.HandleFunc("GET /openpak/v1/topics/"+topic+"/news/"+id+"/"+name, serveFixture(data, label, logger))
+				if name == "article" {
+					mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/"+id+"/article", serveFixture(data, label, logger))
+				}
 			}
 		}
 		for id, payload := range ch.local {
