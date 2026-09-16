@@ -13,6 +13,8 @@
 #   commit, copy or print them. The CDN image receives containers only.
 # - The retired/ tree and manifest.json are not signed: retired fixtures
 #   are prepared cleanup artifacts, not CDN routes.
+# - Each article's decoded payload is also copied verbatim as
+#   <topic>/<news_id>/local.msgpack for the homebrew sync helper.
 #
 # Every produced container is verified against the public OpenPak key
 # (tools/news-patch/openpak-bcat-public.pem) before the script reports
@@ -99,6 +101,13 @@ while IFS= read -r src; do
   dd if="$dst" of="$sig" bs=1 skip=32 count=256 status=none
   if openssl dgst -sha256 -verify "$pub" -signature "$sig" "$payload.dec" > /dev/null 2>&1; then
     echo "  signed+verified  $rel"
+    # The homebrew sync helper posts the plaintext payload through
+    # newsPostLocalNews, which takes MessagePack directly: no container,
+    # no key. Copy it beside the signed pair for the local route.
+    if [[ "$rel" == */article.msgpack ]]; then
+      cp "$src" "$out_dir/${rel%/article.msgpack}/local.msgpack"
+      echo "  local payload    ${rel%/article.msgpack}/local.msgpack"
+    fi
     count=$((count + 1))
   else
     echo "  VERIFY FAILED    $rel" >&2

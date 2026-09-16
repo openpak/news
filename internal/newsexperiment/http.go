@@ -8,6 +8,12 @@
 //	<topic_id>/detail.bcat          per-channel detail record
 //	<topic_id>/icon.bcat            per-channel icon (JPEG plaintext)
 //	<topic_id>/archives.bcat        per-channel archives response
+//	<topic_id>/<news_id>/summary.bcat, article.bcat   signed article pair
+//	<topic_id>/<news_id>/local.msgpack                plaintext post payload
+//
+// local.msgpack is the same decoded article payload, served unwrapped for
+// the homebrew sync helper: newsPostLocalNews takes MessagePack directly,
+// so that path needs no container, no key patch and no DNS redirect.
 //
 // Routes are derived from the directory, so a channel appears as soon as
 // its three fixtures exist; the catalog is never decoded here because the
@@ -20,12 +26,15 @@ package newsexperiment
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"time"
 
@@ -57,6 +66,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 	type channel struct {
 		detail, icon, archives []byte
 		articles               map[string]map[string][]byte
+		local                  map[string][]byte
 	}
 	channels := map[string]channel{}
 	for _, e := range entries {
@@ -79,6 +89,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 			*f.dst = b
 		}
 		ch.articles = map[string]map[string][]byte{}
+		ch.local = map[string][]byte{}
 		children, err := os.ReadDir(filepath.Join(dir, topic))
 		if err != nil {
 			return nil, err
@@ -100,6 +111,17 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 				resources[resource] = data
 			}
 			ch.articles[child.Name()] = resources
+			// Optional: the plaintext payload for local posting.
+			payload, err := os.ReadFile(filepath.Join(dir, topic, child.Name(), "local.msgpack"))
+			switch {
+			case errors.Is(err, fs.ErrNotExist):
+			case err != nil:
+				return nil, fmt.Errorf("local payload %s/%s: %w", topic, child.Name(), err)
+			case len(payload) == 0 || len(payload) > bcatcontainer.MaxPayload:
+				return nil, fmt.Errorf("invalid local payload size: %s/%s", topic, child.Name())
+			default:
+				ch.local[child.Name()] = payload
+			}
 		}
 		channels[topic] = ch
 	}
@@ -121,7 +143,29 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 				mux.HandleFunc("GET /openpak/v1/topics/"+topic+"/news/"+id+"/"+name, serveFixture(data, label, logger))
 			}
 		}
+		for id, payload := range ch.local {
+			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/news/"+id, serveFixture(payload, topic+"/"+id+"/local", logger))
+		}
 	}
+	// Sync index for the homebrew helper: one "<topic> <news_id> <bytes>"
+	// line per postable article, sorted so the bytes are stable.
+	var index bytes.Buffer
+	topics := make([]string, 0, len(channels))
+	for topic := range channels {
+		topics = append(topics, topic)
+	}
+	sort.Strings(topics)
+	for _, topic := range topics {
+		ids := make([]string, 0, len(channels[topic].local))
+		for id := range channels[topic].local {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			fmt.Fprintf(&index, "%s %s %d\n", topic, id, len(channels[topic].local[id]))
+		}
+	}
+	mux.HandleFunc("GET /openpak/v1/local/index", serveFixture(index.Bytes(), "local/index", logger))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("unhandled news route", "method", r.Method, "path", r.URL.Path)

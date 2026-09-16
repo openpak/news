@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/openpak/news/internal/bcatcontainer"
@@ -228,5 +229,71 @@ func TestServedBytesAreStable(t *testing.T) {
 		if !bytes.Equal(first, r.Body.Bytes()) {
 			t.Fatal("fixture bytes changed between requests")
 		}
+	}
+}
+
+// The sync helper's plaintext route: index lines and byte-exact payloads,
+// with the index sorted so two builds of the same tree agree.
+func TestLocalSyncRoutes(t *testing.T) {
+	dir := writeTree(t, "openpak_news", "openpak_games")
+	payloads := map[string][]byte{
+		"openpak_news/2609100002":  []byte("second news payload"),
+		"openpak_news/2609100001":  []byte("first news payload"),
+		"openpak_games/2609110101": []byte("games payload"),
+	}
+	for rel, payload := range payloads {
+		art := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(art, 0755); err != nil {
+			t.Fatal(err)
+		}
+		fixture(t, art, "article.bcat")
+		fixture(t, art, "summary.bcat")
+		if err := os.WriteFile(filepath.Join(art, "local.msgpack"), payload, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h, err := Handler(dir, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/index", nil))
+	want := "openpak_games 2609110101 13\nopenpak_news 2609100001 18\nopenpak_news 2609100002 19\n"
+	if r.Code != 200 || r.Body.String() != want {
+		t.Fatalf("index mismatch: %q", r.Body.String())
+	}
+	for rel, payload := range payloads {
+		r = httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/"+strings.Replace(rel, "/", "/news/", 1), nil))
+		if r.Code != 200 || !bytes.Equal(r.Body.Bytes(), payload) {
+			t.Fatal("local payload mismatch", rel)
+		}
+	}
+	// An article without local.msgpack stays out of the index and the route.
+	art := filepath.Join(dir, "openpak_news", "2609100003")
+	if err := os.MkdirAll(art, 0755); err != nil {
+		t.Fatal(err)
+	}
+	fixture(t, art, "article.bcat")
+	fixture(t, art, "summary.bcat")
+	if h, err = Handler(dir, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/openpak_news/news/2609100003", nil))
+	if r.Code != 404 {
+		t.Fatal("missing local payload served")
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/index", nil))
+	if r.Body.String() != want {
+		t.Fatal("index changed for an article with no local payload")
+	}
+	// An empty payload is a build error, not a zero-byte post.
+	if err := os.WriteFile(filepath.Join(art, "local.msgpack"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Handler(dir, nil, nil); err == nil {
+		t.Fatal("empty local payload accepted")
 	}
 }
