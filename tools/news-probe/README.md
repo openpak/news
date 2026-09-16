@@ -1,9 +1,62 @@
 # OpenPak News Probe
 
 Hardware experiment for [native News](../../docs/native-news-reopen.md).
-Version **0.19.0** adds a separate News edge-token omission patch.
+Version **0.21.0** adds firmware-driven reception: subscribe to the OpenPak
+channel and let the News module download it.
 
-## Current v0.19 test: skip the pre-download edge-token request
+## Current v0.21 test: let the firmware receive OpenPak news
+
+Copy `openpak-news-probe.nro` to `sd:/switch/openpak-news-probe/`, launch it
+and press **D-pad Down**. No reboot, no new server build: it runs against the
+deployed v006 fixtures. The probe
+
+1. lists the topics the firmware itself knows (`GetTopicList`),
+2. probes which subscription filter spelling the service accepts
+   (`GetSubscriptionStatus`, read only),
+3. subscribes to `openpak_news` (`SetSubscriptionStatus`), and
+4. asks for an immediate receive (`RequestImmediateReception`),
+
+then waits 20 seconds and reports whether the record count grew. Everything
+after step 4 is stock firmware: the News module performs the download,
+verifies the container signature, decrypts, stores, and the **stock News
+applet** renders it. No article bytes pass through homebrew.
+
+This path keeps the console's existing setup: the BCAT verification-key
+patch, the News token patch and OpenPak DNS are all required, because the
+firmware's own downloader is the one fetching. Exit with **+**, open News,
+then copy back `report.txt` and correlate it with the server log.
+
+**ZR + D-pad Down** unsubscribes that one topic. `ClearSubscriptionStatusAll`
+is never called: it would drop the console's Nintendo channels too.
+
+The accepted filter format is undocumented, so a first run may report no
+accepted spelling. That result — the exact codes for each candidate — is the
+useful output; send it back rather than retrying.
+
+## Fallback v0.20 test: sync articles without the firmware downloader
+
+Use this only if the firmware path above cannot be made to work. Press
+**D-pad Up**: it fetches `/openpak/v1/local/index` from the OpenPak
+server, downloads each listed article and posts it locally, then reports how
+many were stored. Exit with **+** and open **News** to check the cards, their
+bodies and images; copy back `report.txt`.
+
+Here homebrew does the downloading and the firmware only stores and renders,
+so it needs **no patch, no reboot and no DNS change**: it connects to the
+OpenPak server address directly over TLS with the public OpenPak CA, and
+`newsPostLocalNews` takes MessagePack, so no BCAT container, verification key
+or edge token is involved. It is a foreground sync — running the NRO is what
+refreshes News — and it requires a server built after the sync routes exist
+(`local.msgpack` beside each signed pair).
+
+Posted article IDs are recorded in
+`sd:/switch/openpak-news-probe/posted.txt`, so a second run posts nothing new;
+delete that file to repost everything. Up to 32 articles per run. Each payload
+must be ≥1 KiB, start with the article map and carry the reader's required
+fields, or it is refused before posting. Articles outside their
+published/expire window are stored but will not display.
+
+## Previous v0.19 test: skip the pre-download edge-token request
 
 Copy `openpak-news-probe.nro` to `sd:/switch/openpak-news-probe/`, replacing
 the previous NRO. With OpenPak DNS enabled, launch it and press **D-pad Right**

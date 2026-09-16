@@ -13,11 +13,11 @@ LDFLAGS := $(ARCH) -specs=$(LIBNX)/switch.specs -L$(LIBNX)/lib
 .PHONY: all clean
 all: $(TARGET).nro
 
-$(TARGET).elf: source/main.c source/test_article.h source/cleanup_articles.h source/news_patch.h source/transport.h source/openpak_ca.h Makefile
+$(TARGET).elf: source/main.c source/test_article.h source/cleanup_articles.h source/news_patch.h source/news_auth_patch.h source/transport.h source/sync.h source/native_receive.h source/openpak_ca.h Makefile
 	$(CC) $(CFLAGS) $< $(LDFLAGS) -lnx -o $@
 
 $(TARGET).nacp: Makefile
-	nacptool --create "OpenPak News Probe" "OpenPak" "0.19.0" $@
+	nacptool --create "OpenPak News Probe" "OpenPak" "0.21.0" $@
 
 $(TARGET).nro: $(TARGET).elf $(TARGET).nacp
 	elf2nro $< $@ --nacp=$(TARGET).nacp

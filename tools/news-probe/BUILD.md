@@ -1,3 +1,51 @@
+# Probe 0.21.0 build record
+
+D-pad Down drives reception through the firmware: `GetTopicList` (30101) and
+`GetSubscriptionStatus` (30100) are read-only, then `SetSubscriptionStatus`
+(40100) and `RequestImmediateReception` (30300) hand the work to the News
+module, which downloads, verifies, decrypts, stores and renders in the stock
+applet. All four need permission bits news:a carries; news:v cannot
+subscribe. The filter is a NUL-terminated string of undocumented form, so
+three candidate spellings are probed read-only and only a filter containing
+`openpak_news` is ever used for a write — `"1"` would subscribe the console
+to every topic. ZR + D-pad Down unsubscribes that topic;
+`ClearSubscriptionStatusAll` is never called. Record counts are taken before
+and after through news:v. Nothing else changed.
+
+Built with the pinned toolchain below and -Wall -Wextra -Werror.
+NRO SHA-256: `1d4cc85161e28d3afd8c7e44f891dda8eb159c0ff6f18bbb9226fad4f93e0e47`.
+
+Command IDs and permission masks are from libnx `news.h` (read from the
+pinned toolchain image), libnx `news.c` and switchbrew BCAT services. No
+hardware result yet: whether any filter spelling is accepted, and whether
+the module then fetches OpenPak, are both open.
+
+## Previous build evidence
+
+# Probe 0.20.0 build record
+
+D-pad Up syncs articles: one HTTPS GET of the sync index, then one GET and
+one `newsPostLocalNews` per article not already in `posted.txt`. The request
+always goes to the configured OpenPak address with the public OpenPak CA, so
+it never follows DNS to a Nintendo host, and it carries no console
+credentials. Bounds: 8 KiB index, 512 KiB per article, 32 articles per run,
+30-second body deadline; only a `200` with a complete `Content-Length` is
+used. A payload is posted only if it is at least 1 KiB, starts with the
+article map byte and contains `news_id`, `display_type`, `topic_id` and
+`body`. Patch controls, the catalog diagnostic and the local test article are
+unchanged.
+
+Built with the pinned toolchain below and -Wall -Wextra -Werror.
+NRO SHA-256: `85640cc7ee9cff3b96702984069750aaab50adaa26e46a8413ecb8cb5165b2f6`.
+
+Host validation: `go test -race ./...` and `go vet ./...` pass, including new
+sync-route tests. The signing script was run end to end with throwaway keys,
+and the served `local.msgpack` matched the seed article byte for byte. All 33
+seeded article payloads satisfy the NRO's pre-post guard. Hardware results
+are pending; nothing here proves the applet renders a synced article.
+
+## Previous build evidence
+
 # Probe 0.19.0 build record
 
 Adds separately managed News edge-token omission IPS on D-pad Right/Left;

@@ -705,6 +705,9 @@ static void inspect_cache(void) {
     log_line("Limits: depth 4, 512 entries, 64 exports, 4 MiB/file, 16 MiB total.\n");
 }
 
+#include "sync.h"
+#include "native_receive.h"
+
 int main(void) {
     consoleInit(NULL);
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
@@ -732,6 +735,9 @@ int main(void) {
     log_line("R: install OpenPak BCAT key patch. L: remove patch. Reboot required.\n");
     log_line("D-pad Right: install News token omission. D-pad Left: remove it. Reboot required.\n");
     log_line("Patch affects News and game BCAT; server containers still needed.\n");
+    log_line("D-pad Down: subscribe and let the firmware receive OpenPak news.\n");
+    log_line("  (ZR + D-pad Down unsubscribes only that topic.)\n");
+    log_line("D-pad Up: fallback sync — homebrew downloads and posts locally.\n");
     while (appletMainLoop()) {
         padUpdate(&pad);
         if (padGetButtonsDown(&pad) & HidNpadButton_Plus)
@@ -746,6 +752,14 @@ int main(void) {
             manage_patch(false, true);
         if (padGetButtonsDown(&pad) & HidNpadButton_Left)
             manage_patch(true, true);
+        if (padGetButtonsDown(&pad) & HidNpadButton_Up)
+            sync_articles();
+        if (padGetButtonsDown(&pad) & HidNpadButton_Down) {
+            if (padGetButtons(&pad) & HidNpadButton_ZR)
+                native_unsubscribe();
+            else
+                native_receive();
+        }
         if (padGetButtonsDown(&pad) & HidNpadButton_X)
             inspect_cache();
         if (padGetButtonsDown(&pad) & HidNpadButton_ZL)
