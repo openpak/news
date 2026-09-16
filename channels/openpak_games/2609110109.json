@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110109,
+  "title": "ARMS extends into the roster",
+  "body": "ARMS extends the roster. Its server runs against a real database, serves its health endpoint on its protocol port and listens for the game in WebSocket mode, with the NEX surface registered. Console testing is the unthrown punch: nothing here has faced the retail game yet. When it does, extendable-arm bouts will be among the first matches on the schedule \u2014 grab the beta programme if you want to be the arm that throws it.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "spring"
+  }
+}

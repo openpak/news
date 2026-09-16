@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110004,
+  "title": "The Wii: planned, honest, not yet built",
+  "body": "The Wii is next on the bench, not yet on the network. Nintendo's own service is gone, and the replacement projects keeping it alive are closed source, so we cannot build on them. The plan on file: an open, Go-written foundation exists and is the obvious base when a Wii layer is built, after the Wii U and 3DS stacks prove out. If you can wait a little longer, this channel will say when the first log-in works.",
+  "footer": "OpenPak \u2014 open network services for your console.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "relay"
+  }
+}

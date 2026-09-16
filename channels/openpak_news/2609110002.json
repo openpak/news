@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110002,
+  "title": "The Wii U network takes shape",
+  "body": "The Wii U network is under construction on honest foundations. Our adapter now handles registration, sign-in, the NEX token exchange and identity checks, and the friends server passes end-to-end tests against a live account core and adapter. It is built as a clean reimplementation over the OpenPak account core, so your identity matches the website and every other console. No Wii U has connected yet \u2014 hardware testing is the next milestone, and it is a close one.",
+  "footer": "OpenPak \u2014 open network services for your console.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "orbit"
+  }
+}

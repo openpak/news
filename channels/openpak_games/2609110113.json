@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110113,
+  "title": "Mario Strikers is mid-match in development",
+  "body": "Mario Strikers: Battle League is mid-match in development. The confirmed protocol substrate is registered and the binary builds, vets and tests green; club and online play are the capture-driven work now under way, with the shared NEX host owning login. Nothing has reached a console yet. The pitch is marked, the benches are built \u2014 the next goal is hardware.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "strike"
+  }
+}

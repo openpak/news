@@ -14,8 +14,13 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	_ "image/jpeg"
+	_ "image/png"
 	"math"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 )
 
 type rgb = color.RGBA
@@ -585,31 +590,30 @@ func refreshHead(s *scene, cx, cy int, r, th float64, aDeg float64, col rgb) {
 
 type motifFunc func(s *scene, cx, cy int)
 
+// sceneMotifs is the registry; per-title painters register in init().
+var sceneMotifs = map[string]motifFunc{
+	"mark":     sceneMark,
+	"burst":    sceneBurst,
+	"horizon":  sceneHorizon,
+	"pad":      scenePad,
+	"levels":   sceneLevels,
+	"podium":   scenePodium,
+	"gear":     sceneGear,
+	"orbit":    sceneOrbit,
+	"wrench":   sceneWrench,
+	"power":    scenePower,
+	"question": sceneQuestion,
+	"refresh":  sceneRefresh,
+}
+
+func registerMotif(name string, m motifFunc) { sceneMotifs[name] = m }
+
 func sceneByName(name string) (motifFunc, bool, error) {
-	gridScenes := map[string]motifFunc{
-		"horizon": sceneHorizon,
-	}
-	plain := map[string]motifFunc{
-		"mark":     sceneMark,
-		"burst":    sceneBurst,
-		"pad":      scenePad,
-		"levels":   sceneLevels,
-		"podium":   scenePodium,
-		"gear":     sceneGear,
-		"orbit":    sceneOrbit,
-		"wrench":   sceneWrench,
-		"power":    scenePower,
-		"question": sceneQuestion,
-		"refresh":  sceneRefresh,
-	}
-	if m, ok := gridScenes[name]; ok {
-		return m, true, nil
-	}
-	m, ok := plain[name]
+	m, ok := sceneMotifs[name]
 	if !ok {
 		return nil, false, fmt.Errorf("unknown motif %q", name)
 	}
-	return m, false, nil
+	return m, name == "horizon", nil
 }
 
 // renderArt paints an article card or hero scene at the requested size.
@@ -679,4 +683,339 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// ---------- per-title and console scenes (all original, generic geometry) ----------
+
+func sceneGlobe(s *scene, cx, cy int) { // shared world
+	r := float64(s.H) / 3.6
+	s.c.discGlow(cx, cy, r*1.5, indigoMid, 0.4)
+	for _, k := range [3]float64{0.35, 0.68, 1.0} {
+		s.c.ring(cx, cy, r*k, float64(s.H)/110, indigoHi)
+	}
+	for _, off := range [3]float64{-0.45, 0, 0.45} {
+		s.c.ellipse(cx, cy, r*math.Sqrt(1-off*off), r, float64(s.H)/110, indigoHi)
+	}
+	s.c.disc(cx+int(r*0.55), cy-int(r*0.55), float64(s.H)/90, inkWhite)
+}
+
+// ellipse strokes a parametric axis-aligned ellipse ring.
+func (c *canvas) ellipse(cx, cy int, rx, ry, thick float64, col rgb) {
+	for i := 0; i <= 220; i++ {
+		a := float64(i) / 220 * 2 * math.Pi
+		c.disc(cx+int(math.Round(rx*math.Cos(a))), cy+int(math.Round(ry*math.Sin(a))), thick/2, col)
+	}
+}
+
+func sceneFarm(s *scene, cx, cy int) { // fields
+	hy := s.H * 62 / 100
+	s.c.discGlow(cx-int(s.H/4), hy-int(s.H/5), float64(s.H)/10, hexRGB("#F5C66B"), 0.5)
+	s.c.disc(cx-int(s.H/4), hy-int(s.H/5), float64(s.H)/26, hexRGB("#F5C66B"))
+	for i := -6; i <= 6; i++ {
+		s.c.blendLine(cx+i*s.H/45, hy, cx+i*s.H/9, s.H, indigoHi, 0.30, 2)
+	}
+	s.c.blendRect(0, hy, s.W, hy+1, indigoHi, 0.4)
+}
+
+func scenePod(s *scene, cx, cy int) { // little spacecraft
+	u := float64(s.H) / 364
+	w := hexRGB(white)
+	s.c.discGlow(cx, cy, float64(s.H)/2.8, indigoMid, 0.4)
+	bw, bh := int(120*u), int(200*u)
+	s.c.rrect(cx-bw/2, cy-bh/2, cx+bw/2, cy+bh/2, 55*u, w)
+	vx, vy, vr := cx, cy-int(30*u), 42*u
+	s.c.disc(vx, vy, vr, indigoDeep)
+	s.c.disc(vx, vy, vr*0.62, indigoHi)
+	s.c.rect(cx-int(14*u), cy+int(58*u), cx+int(14*u), cy+int(92*u), indigoDeep)
+}
+
+func sceneFlag(s *scene, cx, cy int) { // racing
+	w := hexRGB(white)
+	pole := s.H * 55 / 100
+	s.c.line(cx-s.H/8, cy-pole/2, cx-s.H/8, cy+pole/2, float64(s.H)/70, w)
+	cell := s.H / 22
+	for row := 0; row < 4; row++ {
+		for col := 0; col < 6; col++ {
+			x0 := cx - s.H/8 + col*cell + row*cell/3
+			y0 := cy - pole/2 + row*cell
+			col2 := w
+			if (row+col)%2 == 0 {
+				col2 = indigoDeep
+			}
+			s.c.rect(x0, y0, x0+cell, y0+cell, col2)
+		}
+	}
+}
+
+func sceneClash(s *scene, cx, cy int) { // crossed blades
+	w := hexRGB(white)
+	for _, d := range [2]float64{-1, 1} {
+		x0 := cx + int(d*float64(s.H)/9)
+		y0 := cy - s.H/4
+		x1 := cx - int(d*float64(s.H)/7)
+		y1 := cy + s.H/4
+		s.c.line(x0, y0, x1, y1, float64(s.H)/40, w)
+		gx, gy := (x0*3+x1)/4, (y0*3+y1)/4
+		s.c.line(gx-int(d)*s.H/28, gy, gx+int(d)*s.H/28, gy, float64(s.H)/55, w)
+	}
+	s.c.discGlow(cx, cy, float64(s.H)/26, indigoHi, 0.6)
+	s.c.disc(cx, cy, float64(s.H)/70, inkWhite)
+}
+
+func splatBlob(c *canvas, cx, cy, r float64, col rgb) {
+	c.disc(int(cx), int(cy), r, col)
+	for i := 0; i < 7; i++ {
+		a := float64(i) * 51.4 * math.Pi / 180
+		rr := r * (0.45 + 0.22*float64(i%3))
+		c.disc(int(cx+rr*2.1*math.Cos(a)), int(cy+rr*2.1*math.Sin(a)), r*(0.30+0.10*float64(i%2)), col)
+	}
+}
+
+func sceneSplat(s *scene, cx, cy int) {
+	s.c.discGlow(cx, cy, float64(s.H)/2.6, indigoMid, 0.4)
+	splatBlob(s.c, float64(cx), float64(cy), float64(s.H)/5.2, indigoHi)
+	splatBlob(s.c, float64(cx+s.H/3), float64(cy+s.H/5), float64(s.H)/11, inkWhite)
+	splatBlob(s.c, float64(cx-s.H/3), float64(cy-s.H/6), float64(s.H)/14, indigoDeep)
+}
+
+func sceneSplatDuo(s *scene, cx, cy int) {
+	s.c.discGlow(cx, cy, float64(s.H)/2.4, indigoMid, 0.4)
+	splatBlob(s.c, float64(cx-s.H/6), float64(cy), float64(s.H)/4.6, indigoHi)
+	splatBlob(s.c, float64(cx+s.H/6), float64(cy+4), float64(s.H)/4.6, inkWhite)
+	for i := 0; i < 5; i++ {
+		s.c.disc(cx-s.H/40+i%3*s.H/70, cy-s.H/9+i*s.H/22, float64(s.H)/90, indigoHi)
+	}
+}
+
+func sceneIsland(s *scene, cx, cy int) { // palm + water
+	hy := s.H * 62 / 100
+	s.c.disc(cx+int(float64(s.W)*0.28), hy-int(s.H/4), float64(s.H)/22, hexRGB("#F5C66B"))
+	s.c.blendRect(0, hy, s.W, s.H, indigoDeep, 0.35)
+	for y := hy; y < s.H; y += s.H / 30 {
+		s.c.blendLine(0, y, s.W, y, indigoHi, 0.15, 1)
+	}
+	// Island mound sitting on the horizon.
+	s.c.ellipse(cx, hy+2, float64(s.H)/6, float64(s.H)/26, float64(s.H)/26, indigoHi)
+	tx, ty := cx, hy-s.H/18
+	s.c.line(tx, ty, tx+int(float64(s.H)/160), ty+int(float64(s.H)/9), float64(s.H)/70, inkWhite)
+	// Palm fronds radiating from the crown and drooping outward.
+	for _, a := range [5]float64{15, 50, 90, 130, 165} {
+		s.c.arc(tx, ty-int(float64(s.H)/70), float64(s.H)/13, float64(s.H)/95, a-26, a+26, inkWhite)
+	}
+	s.c.disc(tx, ty-int(float64(s.H)/70), float64(s.H)/110, inkWhite)
+}
+
+func sceneSpring(s *scene, cx, cy int) { // coil + fist
+	w := hexRGB(white)
+	coils := 5
+	for i := 0; i <= coils*24; i++ {
+		t := float64(i) / float64(coils*24)
+		x := cx - s.H/5 + int(t*float64(s.H)*2/5)
+		y := cy + int(math.Sin(t*math.Pi*2*float64(coils))*float64(s.H)/22)
+		s.c.disc(x, y, float64(s.H)/95, w)
+	}
+	fx, fy := cx+s.H/5+int(float64(s.H)/36), cy
+	s.c.disc(fx, fy, float64(s.H)/16, w)
+	s.c.disc(fx, fy, float64(s.H)/40, indigoDeep)
+	s.c.disc(cx-s.H/5-int(float64(s.H)/36), cy, float64(s.H)/22, indigoHi)
+}
+
+func sceneMansion(s *scene, cx, cy int) {
+	amber := hexRGB("#F5C66B")
+	base := s.H * 72 / 100
+	bw, bh := s.H*38/100, s.H*30/100
+	s.c.rrect(cx-bw/2, base-bh, cx+bw/2, base, float64(s.H)/70, indigoDeep)
+	s.c.line(cx-bw/2-int(s.H/30), base-bh, cx, base-bh-s.H*14/100, float64(s.H)/50, inkWhite)
+	s.c.line(cx+bw/2+int(s.H/30), base-bh, cx, base-bh-s.H*14/100, float64(s.H)/50, inkWhite)
+	for _, wx := range [3]int{cx - bw/3, cx, cx + bw/3} {
+		s.c.rect(wx-s.H/50, base-bh+s.H/24, wx+s.H/50, base-bh+s.H/12, amber)
+	}
+	s.c.rect(cx-s.H/40, base-s.H*7/100, cx+s.H/40, base, inkWhite)
+}
+
+func sceneGolf(s *scene, cx, cy int) {
+	w := hexRGB(white)
+	ground := s.H * 66 / 100
+	s.c.blendLine(0, ground, s.W, ground, indigoHi, 0.4, 2)
+	fx := cx + s.H/8
+	s.c.line(fx, ground, fx, ground-s.H/4, float64(s.H)/80, w)
+	s.c.line(fx, ground-s.H/4, fx+s.H/9, ground-s.H/4+s.H/40, float64(s.H)/80, w)
+	s.c.line(fx, ground-s.H/4, fx, ground-s.H/4+s.H/18, float64(s.H)/80, w)
+	s.c.disc(cx-s.H/7, ground-s.H/70, float64(s.H)/50, w)
+	s.c.disc(cx-s.H/7, ground-s.H/150, float64(s.H)/60, indigoDeep)
+}
+
+func sceneDice(s *scene, cx, cy int) {
+	u := float64(s.H) / 364
+	w := hexRGB(white)
+	x0, y0 := cx-s.H/5, cy-s.H/7
+	size := s.H / 4
+	s.c.rrect(x0, y0, x0+size, y0+size, 24*u, w)
+	for _, p := range [5][2]float64{{-1, -1}, {1, -1}, {0, 0}, {-1, 1}, {1, 1}} {
+		s.c.disc(x0+size/2+int(p[0]*52*u), y0+size/2+int(p[1]*52*u), 20*u, indigoDeep)
+	}
+	x1, y1 := cx+s.H/16, cy+s.H/22
+	size2 := s.H / 6
+	s.c.rrect(x1, y1, x1+size2, y1+size2, 16*u, indigoHi)
+	s.c.disc(x1+size2/2, y1+size2/2, 16*u, indigoDeep)
+}
+
+func sceneStrike(s *scene, cx, cy int) {
+	bx, by := cx+s.H/16, cy
+	s.c.disc(bx, by, float64(s.H)/6, indigoHi)
+	for i := 0; i < 5; i++ {
+		a := -math.Pi/2 + float64(i)*2*math.Pi/5
+		s.c.disc(bx+int(math.Round(float64(s.H)/22*math.Cos(a))), by+int(math.Round(float64(s.H)/22*math.Sin(a))), float64(s.H)/55, indigoDeep)
+	}
+	for i := 0; i < 3; i++ {
+		s.c.blendLine(bx-s.H/4-int(i)*s.H/26, by-s.H/16+i*s.H/16, bx-s.H/8, by-s.H/16+i*s.H/16, inkWhite, 0.35, 2)
+	}
+}
+
+func sceneTennis(s *scene, cx, cy int) {
+	u := float64(s.H) / 364
+	w := hexRGB(white)
+	rx, ry, rr := cx-s.H/24, cy, float64(s.H)/5.6
+	for t := 0; t < 360; t += 2 {
+		th := float64(t) * math.Pi / 180
+		s.c.disc(rx+int(math.Round(rr*1.35*math.Cos(th))), ry+int(math.Round(rr*math.Sin(th))), 7*u, w)
+	}
+	for i := -2; i <= 2; i++ {
+		s.c.blendLine(rx-int(rr*1.2), ry+i*int(rr/2.6), rx+int(rr*1.2), ry+i*int(rr/2.6), indigoHi, 0.35, 1)
+	}
+	for i := -3; i <= 3; i++ {
+		s.c.blendLine(rx+i*int(rr/2.4), ry-int(rr*0.95), rx+i*int(rr/2.4), ry+int(rr*0.95), indigoHi, 0.35, 1)
+	}
+	s.c.line(rx+int(rr*1.3), ry, rx+int(rr*1.3)+s.H/6, ry+s.H/9, 22*u, w)
+	s.c.disc(cx+s.H/4, cy-s.H/8, float64(s.H)/40, w)
+}
+
+func sceneClaws(s *scene, cx, cy int) {
+	w := hexRGB(white)
+	for i := 0; i < 3; i++ {
+		x0 := cx - s.H/4 + i*s.H/11
+		y0 := cy - s.H/4
+		x1 := x0 + s.H/7
+		y1 := cy + s.H/3
+		s.c.line(x0, y0, x1, y1, float64(s.H)/26, w)
+		s.c.disc(x0, y0, float64(s.H)/85, w)
+	}
+}
+
+func sceneBlock(s *scene, cx, cy int) {
+	amber := hexRGB("#F5C66B")
+	u := float64(s.H) / 364
+	bw, bh := int(88*u), int(44*u)
+	for row := 0; row < 2; row++ {
+		off := 0
+		if row%2 == 1 {
+			off = bw / 2
+		}
+		for col := -2; col <= 1; col++ {
+			x0 := cx - bw + col*bw + off
+			y0 := cy + row*bh
+			s.c.rrect(x0+3, y0+3, x0+bw-3, y0+bh-3, 6*u, indigoHi)
+		}
+	}
+	cx2, cy2 := cx+int(4*u), cy-int(70*u)
+	s.c.discGlow(cx2, cy2, float64(s.H)/22, amber, 0.4)
+	s.c.disc(cx2, cy2, float64(s.H)/40, amber)
+	s.c.rect(cx2-int(s.H)/130, cy2-int(s.H)/60, cx2+int(s.H)/130, cy2+int(s.H)/60, indigoDeep)
+}
+
+func sceneRelay(s *scene, cx, cy int) { // Wii: signal relay between two points
+	w := hexRGB(white)
+	ax, ay := cx-s.H/4, cy+s.H/10
+	bx, by := cx+s.H/4, cy-s.H/10
+	s.c.disc(ax, ay, float64(s.H)/30, indigoHi)
+	s.c.ring(bx, by, float64(s.H)/26, float64(s.H)/90, w)
+	for k := 1; k <= 3; k++ {
+		midx := (ax + bx) / 2
+		midy := (ay+by)/2 - k*s.H/38
+		s.c.arc(midx, midy+int(float64(s.H)/26), float64(s.H)*float64(3+k)/22, float64(s.H)/110, 220, 320, w)
+	}
+}
+
+func sceneBeacon(s *scene, cx, cy int) { // DS: mark with signal arcs
+	drawMark(s.c, cx-s.H/7, cy, s.H*2/7, nil)
+	for k := 1; k <= 3; k++ {
+		s.c.arc(cx+s.H/14, cy, float64(s.H)*float64(5+k*3)/44, float64(s.H)/110, 300, 420, inkWhite)
+	}
+}
+
+func init() {
+	// Register the extended motif set (plain names in sceneByName).
+	extra := map[string]motifFunc{
+		"globe": sceneGlobe, "farm": sceneFarm, "pod": scenePod,
+		"flag": sceneFlag, "clash": sceneClash, "splat": sceneSplat,
+		"splatduo": sceneSplatDuo, "island": sceneIsland, "spring": sceneSpring,
+		"mansion": sceneMansion, "golf": sceneGolf, "dice": sceneDice,
+		"strike": sceneStrike, "tennis": sceneTennis, "claws": sceneClaws,
+		"block": sceneBlock, "relay": sceneRelay, "beacon": sceneBeacon,
+	}
+	for name, m := range extra {
+		registerMotif(name, m)
+	}
+}
+
+// ---------- real screenshots ----------
+
+// loadScreenshot returns an operator-captured gameplay image for an article,
+// from channels/screenshots/<news_id>.png|jpg|jpeg. Absent file = none.
+func loadScreenshot(sourceDir string, id int64) image.Image {
+	for _, ext := range []string{".png", ".jpg", ".jpeg"} {
+		p := filepath.Join(sourceDir, "screenshots", strconv.FormatInt(id, 10)+ext)
+		f, err := os.Open(p)
+		if err != nil {
+			continue
+		}
+		im, _, err := image.Decode(f)
+		f.Close()
+		if err == nil {
+			return im
+		}
+	}
+	return nil
+}
+
+// coverCrop center-crops an image to the target aspect, then box-filter
+// scales it to exactly w×h. Deterministic, no external dependencies.
+func coverCrop(im image.Image, w, h int) *image.RGBA {
+	b := im.Bounds()
+	sw, sh := b.Dx(), b.Dy()
+	cw, ch := sw, sw*h/w
+	if ch > sh {
+		cw, ch = sh*w/h, sh
+	}
+	x0 := b.Min.X + (sw-cw)/2
+	y0 := b.Min.Y + (sh-ch)/2
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	for py := 0; py < h; py++ {
+		sy0 := y0 + py*ch/h
+		sy1 := y0 + (py+1)*ch/h
+		if sy1 <= sy0 {
+			sy1 = sy0 + 1
+		}
+		for px := 0; px < w; px++ {
+			sx0 := x0 + px*cw/w
+			sx1 := x0 + (px+1)*cw/w
+			if sx1 <= sx0 {
+				sx1 = sx0 + 1
+			}
+			var rs, gs, bs, n float64
+			for sy := sy0; sy < sy1; sy++ {
+				for sx := sx0; sx < sx1; sx++ {
+					cr, cg, cb, _ := im.At(sx, sy).RGBA()
+					rs += float64(cr >> 8)
+					gs += float64(cg >> 8)
+					bs += float64(cb >> 8)
+					n++
+				}
+			}
+			out.SetRGBA(px, py, rgb{
+				R: uint8(math.Round(rs / n)), G: uint8(math.Round(gs / n)),
+				B: uint8(math.Round(bs / n)), A: 255})
+		}
+	}
+	return out
 }

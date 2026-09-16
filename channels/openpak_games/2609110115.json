@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110115,
+  "title": "Monster Hunter Generations Ultimate hunts here",
+  "body": "Monster Hunter Generations Ultimate hunts on the shared NEX host. The server builds, starts, listens on the game's protocol block and round-trips its DataStore against a real database \u2014 the items and quests hunters care about have a working cupboard. The game itself has never been pointed at it; the first hunt will be the real test. Carve out your spot in the beta programme.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "claws"
+  }
+}

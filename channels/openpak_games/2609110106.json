@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110106,
+  "title": "Splatoon 3 research is open and early",
+  "body": "Splatoon 3 research is open and early. The server speaks the game's newer NPLN protocol family: it terminates the title's TLS, answers the authentication, friends, presence and schedule services, and generates the stage rotation as data that refuses to start if it would crash your console. Nothing has run against the retail game yet, and the wider service surface is mapped rather than built. Follow the Workshop channel for the protocol notes as they land.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "splatduo"
+  }
+}

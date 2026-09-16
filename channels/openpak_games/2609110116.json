@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110116,
+  "title": "Super Mario Bros. 35: bringing it back",
+  "body": "Super Mario Bros. 35 is the reason this network exists for games. Nintendo delisted it on 30 March 2021 and switched the service off the next day, so nobody can play it online at all \u2014 a battle royale with nobody left to battle. Our server builds, starts and registers every NEX protocol the 35-player battle uses, on a service competing only with ourselves. Bringing it back is the whole point of OpenPak.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "block"
+  }
+}

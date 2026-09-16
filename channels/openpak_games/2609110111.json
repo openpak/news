@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110111,
+  "title": "Mario Golf: Super Rush books its tee time",
+  "body": "Mario Golf: Super Rush tees off on OpenPak's shared NEX host. It builds, starts and serves its health endpoint, and because Golf is a peer-to-peer title the server's job is precise: log your console in, keep the lobby list honest and hand players to each other. That handshake has not met a console yet \u2014 the tee time is booked, and the swing needs proof.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "golf"
+  }
+}

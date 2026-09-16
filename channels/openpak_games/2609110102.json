@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110102,
+  "title": "Stardew Valley farms are live on OpenPak",
+  "body": "Stardew Valley multiplayer runs on OpenPak. Three-player farms are verified: hosting, joining and playing together succeed, with rejoin after disconnect, host leave and stale-seat cleanup, tested on 7 September. Your console carries an OpenPak identity \u2014 the server checks the token it presents and reads your friend list through the account core, so invitations work between linked accounts. The identity path has not yet been replayed end to end on a linked console; that is the last gate before wider testing.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "farm"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110104,
+  "title": "Mario Kart 8 Deluxe: the pit lane is busy",
+  "body": "Mario Kart 8 Deluxe's server is taking shape on our shared NEX host. It builds, starts, listens on the game's protocol block and creates its schemas; the next milestone is console contact, which nothing here has seen yet. One known gap sits in the shared host's login crypto, where a key size must grow to what the Switch expects \u2014 tracked, not hidden. Racing online again is the goal; this is the honest state of the pit lane.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "flag"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110114,
+  "title": "Mario Tennis Aces warms up on the host",
+  "body": "Mario Tennis Aces serves from the shared NEX host. The server builds, starts, answers its health endpoint, creates its schemas and speaks the matchmaking the game expects. No console has stepped onto the court yet, which makes every future error message a gift. Rally with us in the beta programme when the nets go up.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "tennis"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110103,
+  "title": "Among Us gets a self-hosted home",
+  "body": "Among Us has a home on OpenPak \u2014 and it is unlike the rest of the roster. The game never touches Nintendo's network, so there was nothing to replace: instead we self-host the well-known open server, rebuilt from our own fork, and it went live on production on 11 September. The matchmaker hostnames for Europe and Asia terminate on our certificate authority, and the console installer redirects them. Nothing has been tested against the game client yet, so treat this as a beta you can watch closely.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "pod"
+  }
+}

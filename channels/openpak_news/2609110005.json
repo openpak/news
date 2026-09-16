@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110005,
+  "title": "Nintendo DS: the plan is on file",
+  "body": "The Nintendo DS network is planned together with the Wii's: one GameSpy-style foundation covers both systems, and it is written down as the future layer rather than started. Nothing in-house serves the DS today, and we will not pretend otherwise. What exists is the decision, the base and the order of work: Wii U and 3DS first, Switch running now, and the older handhelds following with the same account core behind them.",
+  "footer": "OpenPak \u2014 open network services for your console.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "beacon"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110112,
+  "title": "Mario Party Superstars rolls the dice",
+  "body": "Mario Party Superstars rolls onto the shared NEX host. The server builds and starts, listens on both of the game's protocol listeners and creates its schemas, running the exact NEX and Pia versions the title expects. A console has not joined a board yet; when one does, the virtual dice finally matter again. Beta testers, bring three friends.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "dice"
+  }
+}

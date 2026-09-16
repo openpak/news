@@ -65,11 +65,30 @@ Article file fields: `title` (≤ 100 chars), `body` (**one paragraph**,
 ≤ 1200 chars — newline rendering is unverified in the native reader),
 `footer` (≤ 80), `language` + `supported_languages` (`en-GB` style, the
 article language must be listed), `lifetime_days` (1..30) and `art`
-(`motif`). Article motifs are gaming scenes built on the official mark:
+(`motif`).
+
+**Real screenshots** (PRD rectified 2026-09-11): drop an operator-captured
+gameplay image at `channels/screenshots/<news_id>.png` (or `.jpg`) and it
+replaces the generated banner for that article — center-cropped and
+re-encoded to the exact card/hero sizes automatically. Only Outbound
+(`2609100101`, `2609110101`) carries one today. Captures go to the citron
+screenshot folder (`~/.local/share/citron/screenshots`, named by title id)
+or any capture tool — copy one over, rename to the article id, rebuild,
+resign. The game must be credited in the article body, and any image comes
+down on the rights holder's request (see the PRD's 2026-09-11 amendment).
+Without a screenshot, the generated scene art is used.
+
+Article motifs are gaming scenes built on the official mark:
 `mark`, `burst`, `horizon`, `pad`, `levels`, `podium`, `gear`, `orbit`,
-`wrench`, `power`, `question`, `refresh`. Channel icons reproduce the
-OpenPak logo (`mark`) or swap its centre dot for a glyph:
-`mark-pad`, `mark-gear`, `mark-question`.
+`wrench`, `power`, `question`, `refresh`, plus per-title scenes — `globe`
+(Outbound), `farm` (Stardew Valley), `pod` (Among Us), `flag`
+(Mario Kart 8 Deluxe), `clash` (Smash Bros.), `splatduo`/`splat`
+(Splatoon 3/2), `island` (Animal Crossing), `spring` (ARMS), `mansion`
+(Luigi's Mansion 3), `golf`, `dice` (Party Superstars), `strike`
+(Strikers), `tennis` (Tennis Aces), `claws` (Monster Hunter GU), `block`
+(Super Mario Bros. 35) — and `relay`/`beacon` for the console-network
+pieces. Channel icons reproduce the OpenPak logo (`mark`) or swap its
+centre dot for a glyph: `mark-pad`, `mark-gear`, `mark-question`.
 
 ## Build
 
@@ -170,7 +189,7 @@ catalog, and the CDN serves it as catalog-only — a deliberate state, though
 its Find Channels behaviour on hardware is untested; prefer keeping at
 least one channel live.
 
-## Inventory (2026-09-10 seed)
+## Inventory (2026-09-11 seed — 33 articles)
 
 | Topic | Name | Icon (official mark, centre dot swapped) |
 | --- | --- | --- |
@@ -184,22 +203,44 @@ least one channel live.
 | `openpak_news/2609100001` | Welcome to the OpenPak channel lineup | this lineup; catalog decode evidence |
 | `openpak_news/2609100002` | OpenPak content decodes on your console | probe v0.19 ZL (2026-09-09); v0.12 local rendering |
 | `openpak_news/2609100003` | The network behind the news | OpenPak README network milestone; `status/` status page live |
-| `openpak_games/2609100101` | Outbound players share a world on OpenPak | `servers/outbound/HANDOFF.md` (2026-09-06/07: shared world, stock-flow console link) |
+| `openpak_news/2609110001` | The Switch is OpenPak's home network | retail-Switch milestone (main README); servers roster |
+| `openpak_news/2609110002` | The Wii U network takes shape | `nn-account` M2/M3 done; `nn-friends` M3 end-to-end vs live core |
+| `openpak_news/2609110003` | The 3DS shares the new network brain | same adapter family; `nn-account`/`nn-friends` status |
+| `openpak_news/2609110004` | The Wii: planned, honest, not yet built | `research-third-party-networks.md` verdicts (Wiimmfi closed; WiiLink WFC open) |
+| `openpak_news/2609110005` | Nintendo DS: the plan is on file | same research: one GameSpy-style base planned for Wii+DS |
+| `openpak_games/2609100101` | Outbound players share a world on OpenPak | `servers/outbound/HANDOFF.md` (2026-09-06/07) |
 | `openpak_games/2609100102` | Stardew Valley farms go multiplayer | `servers/stardew-valley/README.md` (2026-09-07, Ryujinx-verified) |
-| `openpak_games/2609100103` | How a game earns its place here | MK8D/SSBU "never tested against a console"; Splatoon 3 early research |
+| `openpak_games/2609100103` | How a game earns its place here | server status lines across `servers/` |
+| `openpak_games/2609110101` | Outbound is open — come share a world | playable: shared world on emulators; console link done |
+| `openpak_games/2609110102` | Stardew Valley farms are live on OpenPak | playable: 3-player farms verified 2026-09-07 |
+| `openpak_games/2609110103` | Among Us gets a self-hosted home | deployed to production 2026-09-11; console-untested |
+| `openpak_games/2609110104` | Mario Kart 8 Deluxe: the pit lane is busy | builds/listens, never console-tested; known kerberos key-size gap |
+| `openpak_games/2609110105` | Smash Bros. Ultimate enters the workshop | runs, DataStore round-trips vs real Postgres |
+| `openpak_games/2609110106` | Splatoon 3 research is open and early | NPLN: 4 services answered, rotation generator, never vs retail |
+| `openpak_games/2609110107` | Splatoon 2's server inked in | NEX: builds/listens/schemas, never console-tested |
+| `openpak_games/2609110108` | Animal Crossing's island joins the programme | runs vs real Postgres + shared libraries |
+| `openpak_games/2609110109` | ARMS extends into the roster | runs, healthz 22142, WebSocket listeners |
+| `openpak_games/2609110110` | Luigi's Mansion 3: the lights are on | runs, auth/secure 22190/22191 |
+| `openpak_games/2609110111` | Mario Golf: Super Rush books its tee time | peer-to-peer title: login + lobby list role |
+| `openpak_games/2609110112` | Mario Party Superstars rolls the dice | NEX 4.6.5 / Pia 5.33.0 registered |
+| `openpak_games/2609110113` | Mario Strikers is mid-match in development | substrate registered; club play capture-driven next |
+| `openpak_games/2609110114` | Mario Tennis Aces warms up on the host | builds, healthz, schemas, matchmaking |
+| `openpak_games/2609110115` | Monster Hunter Generations Ultimate hunts here | DataStore round-trips vs Postgres |
+| `openpak_games/2609110116` | Super Mario Bros. 35: bringing it back | delisted 2021-03-30; every NEX protocol registered |
 | `openpak_workshop/2609100201` | Anatomy of a signed News container | `internal/bcatcontainer`, Switchbrew BCAT container format |
-| `openpak_workshop/2609100202` | How your console finds our channels | server request logs; v004 archives work in `docs/native-news-container.md` |
+| `openpak_workshop/2609100202` | How your console finds our channels | server request logs; `docs/native-news-container.md` |
 | `openpak_workshop/2609100203` | Two small patches, honestly explained | `tools/news-patch/README.md`, `tools/news-patch/news-no-dauth/README.md` |
 | `openpak_help/2609100301` | Getting your console ready for OpenPak News | installer hosts fix (probe v0.16), patch installers R/L and D-pad |
-| `openpak_help/2609100302` | When News will not load, read this | documented 0x167B history: DNS omission and edge token confirmed; TLS profile never proven necessary (probe v0.18/v0.19) |
+| `openpak_help/2609100302` | When News will not load, read this | 0x167B history: DNS omission + edge token confirmed; TLS profile never proven necessary |
 | `openpak_help/2609100303` | Where articles live, and when they leave | verified expiry replacement + later disappearance; no instant-delete guarantee |
 
-Article banners use the scene motifs in this order — News: `mark`,
-`burst`, `horizon`; Games: `pad`, `levels`, `podium`; Workshop: `gear`,
-`orbit`, `wrench`; Help: `power`, `question`, `refresh`. All art is drawn
+Article banners use per-title scene motifs (`globe`, `farm`, `pod`, `flag`,
+`clash`, `splatduo`, `splat`, `island`, `spring`, `mansion`, `golf`, `dice`,
+`strike`, `tennis`, `claws`, `block`) and the shared set for the console
+pieces (`horizon`, `orbit`, `burst`, `relay`, `beacon`). All art is drawn
 by [`cmd/newsseed/art.go`](../cmd/newsseed/art.go) from the official mark's
-geometry (indigo gradient, ring, spiral arc) — original, deterministic, no
-third-party assets.
+geometry — original, deterministic, no screenshots or third-party assets
+(those are copyrighted material and stay out of the repository by rule).
 
 ## Remaining hardware checks (in order)
 

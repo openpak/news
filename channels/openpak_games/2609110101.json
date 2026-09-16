@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110101,
+  "title": "Outbound is open \u2014 come share a world",
+  "body": "Outbound is open on OpenPak. Two players share one world through our own server: joining fresh or returning, picking up items for each other, leaving and rejoining without ghosts, with long sessions verified. The game's cloud refuses replacement accounts, so we host the multiplayer ourselves, running the game's exact network code headless. A real Switch profile linked through the stock sign-in flow on 7 September, clearing the way for console playtests. Jump in from the beta programme and say hello.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "globe"
+  }
+}

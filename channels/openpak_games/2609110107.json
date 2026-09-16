@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110107,
+  "title": "Splatoon 2's server inked in",
+  "body": "Splatoon 2 runs on NEX, and so does its server. It builds, starts, serves its health endpoint, creates its schemas and registers the matchmaking surface the game uses; console contact is the step that has not happened yet. Two plain facts keep the roster straight: Splatoon 2 is NEX, Splatoon 3 is NPLN, and they are separate services in separate repositories. Ink now, consoles later.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "splat"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110105,
+  "title": "Smash Bros. Ultimate enters the workshop",
+  "body": "Super Smash Bros. Ultimate joins the roster in development. Its server runs: DataStore queries round-trip against a real database, schemas build cleanly, and the health endpoint answers. Like every NEX title here, it has not yet faced a console \u2014 local verification first, hardware after. The plan is unchanged: prove the login path, then the data services fighters actually need, then the first console session.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "clash"
+  }
+}

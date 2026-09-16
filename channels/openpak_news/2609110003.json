@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110003,
+  "title": "The 3DS shares the new network brain",
+  "body": "The 3DS shares its network brain with the Wii U: one adapter for accounts and one for friends, both speaking the protocols the little system expects. Registration, sign-in, token exchange and the friend graph are implemented and tested against the live core; presence and notifications stay server-side. Like the Wii U, no console has dialled in yet. When one does, your friend list will be the same one you see everywhere else on OpenPak.",
+  "footer": "OpenPak \u2014 open network services for your console.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "burst"
+  }
+}

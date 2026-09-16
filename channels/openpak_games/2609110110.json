@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110110,
+  "title": "Luigi's Mansion 3: the lights are on",
+  "body": "Luigi's Mansion 3 gets a lantern of its own. The server starts, pings a real database, answers health checks and listens on the game's authentication and secure ports with its protocols registered. It has never seen a console; that first connection is the next milestone. Dark halls, friendly ghosts and a server with the lights on \u2014 the beta programme will tell us what the game asks for first.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "mansion"
+  }
+}

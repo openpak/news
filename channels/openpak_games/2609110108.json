@@ -1,0 +1,15 @@
+{
+  "news_id": 2609110108,
+  "title": "Animal Crossing's island joins the programme",
+  "body": "Animal Crossing: New Horizons has a server on the island. It runs against a real database, builds its own schemas plus the shared matchmaking and tracking libraries, and answers the protocols the game knows. No console has visited yet \u2014 that is the next stamp in the passport. As with every NEX title in the programme, the honest status is: the lights are on, the door is unlocked, and the first visitor will teach us the most.",
+  "footer": "OpenPak Games \u2014 playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 14,
+  "art": {
+    "motif": "island"
+  }
+}

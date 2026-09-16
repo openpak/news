@@ -254,6 +254,7 @@ type articleEntry struct {
 	PublishedAt int64               `json:"published_at"`
 	ExpireAt    int64               `json:"expire_at"`
 	Art         string              `json:"art"`
+	Image       string              `json:"image,omitempty"` // "screenshot" or "generated"
 	Reason      string              `json:"reason,omitempty"`
 	Files       map[string]fileInfo `json:"files"`
 }
@@ -640,13 +641,24 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 				continue
 			}
 			a := s.source
-			card, err := renderJPEG("card", a.Art.Motif, a.Art.Hue, 358, 201)
-			if err != nil {
-				return fmt.Errorf("article %d card: %w", a.NewsID, err)
-			}
-			hero, err := renderJPEG("hero", a.Art.Motif, a.Art.Hue, 800, 364)
-			if err != nil {
-				return fmt.Errorf("article %d hero: %w", a.NewsID, err)
+			// A real gameplay capture beats generated art when one exists.
+			var card, hero []byte
+			imageSource := "generated"
+			if shot := loadScreenshot(sourceDir, a.NewsID); shot != nil {
+				if card, err = encodeJPEG(coverCrop(shot, 358, 201)); err != nil {
+					return fmt.Errorf("article %d card: %w", a.NewsID, err)
+				}
+				if hero, err = encodeJPEG(coverCrop(shot, 800, 364)); err != nil {
+					return fmt.Errorf("article %d hero: %w", a.NewsID, err)
+				}
+				imageSource = "screenshot"
+			} else {
+				if card, err = renderJPEG("card", a.Art.Motif, a.Art.Hue, 358, 201); err != nil {
+					return fmt.Errorf("article %d card: %w", a.NewsID, err)
+				}
+				if hero, err = renderJPEG("hero", a.Art.Motif, a.Art.Hue, 800, 364); err != nil {
+					return fmt.Errorf("article %d hero: %w", a.NewsID, err)
+				}
 			}
 			payload := newsformat.Article{
 				NewsID: a.NewsID, PublishedAt: a.stamp(published),
@@ -660,7 +672,7 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 			ae := articleEntry{
 				NewsID: a.NewsID, Title: a.Title,
 				PublishedAt: payload.PublishedAt, ExpireAt: payload.ExpireAt,
-				Art: a.Art.Motif, Files: map[string]fileInfo{},
+				Art: a.Art.Motif, Image: imageSource, Files: map[string]fileInfo{},
 			}
 			dir := filepath.Join(ch.TopicID, strconv.FormatInt(a.NewsID, 10))
 			if s.retired != nil {
