@@ -143,6 +143,13 @@ for news (the apps' push is for social events only).
   BCAT renderer as the first implementation; the SpotPass renderer implements the same
   interface later without touching content code.
 - NB-04 Authoring: role-gated website pages for articles and datasets; preview.
+- NB-09 Channel and lifecycle management API (added 2026-09-16): extend the authoring
+  gRPC beyond articles and datasets so operators manage the whole catalogue through the
+  API — create, update, retire and delete channels (topic id, lineup order, per-channel
+  art and language set) and delete articles (today only unpublish exists). Today channels
+  exist only as static seed files (`channels/*.json` compiled by `newsseed`), so any
+  lineup change is a rebuild and resign; the management API must let the renderers pick
+  channel and article changes up from the store without a rebuilt seed.
 - NB-05 Emulator delivery: same data over the emulator API so Citron can place BCAT files in
   its LayeredFS folder.
 - NB-06 Caching headers for a CDN-shaped host: `ETag`, `Last-Modified`.
