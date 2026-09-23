@@ -2,8 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags: ['v*.*.*']
+  workflow_dispatch:
 
 # Both runner services share one Docker daemon, and this test binds a fixed
 # host port for Postgres. Keep only the newest run so two revisions cannot
