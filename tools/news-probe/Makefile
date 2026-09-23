@@ -17,7 +17,7 @@ $(TARGET).elf: source/main.c source/test_article.h source/cleanup_articles.h sou
 	$(CC) $(CFLAGS) $< $(LDFLAGS) -lnx -o $@
 
 $(TARGET).nacp: Makefile
-	nacptool --create "OpenPak News Probe" "OpenPak" "0.21.0" $@
+	nacptool --create "OpenPak News Probe" "OpenPak" "0.22.0" $@
 
 $(TARGET).nro: $(TARGET).elf $(TARGET).nacp
 	elf2nro $< $@ --nacp=$(TARGET).nacp

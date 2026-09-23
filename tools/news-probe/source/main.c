@@ -127,7 +127,7 @@ static void manage_patch(bool remove_patch, bool auth_patch) {
 
 static void probe(void) {
     const u32 version = hosversionGet();
-    log_line("OpenPak News probe 0.19.0 -- News edge-token omission experiment\n");
+    log_line("OpenPak News probe 0.22.0 -- firmware reception (subscription status 2)\n");
     log_line("HOS: %u.%u.%u  Atmosphere detected: %s\n",
         HOSVER_MAJOR(version), HOSVER_MINOR(version), HOSVER_MICRO(version),
         hosversionIsAtmosphere() ? "yes" : "no");

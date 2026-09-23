@@ -16,28 +16,21 @@
 // Commands (libnx news.h, switchbrew BCAT services): GetSubscriptionStatus
 // 30100, GetTopicList 30101, RequestImmediateReception 30300,
 // SetSubscriptionStatus 40100. news:a carries every permission bit; news:v
-// alone cannot subscribe. Filters are NUL-terminated strings whose accepted
-// form is undocumented, so the read-only status call probes candidates
-// first and only a filter naming our own topic is ever used to write.
+// alone cannot subscribe.
+//
+// The topic argument is the bare topic id (hardware, probe v0.21: both
+// topic_id='...' spellings fail with 0x47d). Subscription status values
+// (22.5.0 firmware): 0 = forget the topic, 1 = unsubscribed, 2 =
+// subscribed, 3 = auto-subscribed. The bcat worker only fetches topics in
+// status 2 and refuses to store records for any other (0xd47d) — v0.21
+// wrote 1, which is why nothing it received was ever stored.
 //
 // Include after main.c's log_line/result.
 
 #define RECEIVE_TOPIC "openpak_news"
 
-// Candidate filter spellings, read-only probe order. The database services
-// take SQL-style where clauses ("1", "received_at DESC"), so the subscription
-// filter may be one too; it may equally be a bare topic id.
-static const char *const receive_filters[] = {
-    "topic_id='" RECEIVE_TOPIC "'",
-    RECEIVE_TOPIC,
-    "topic_id=\"" RECEIVE_TOPIC "\"",
-};
-
-// A write must never match more than our own channel: "1" or an empty
-// filter would subscribe the console to every topic the firmware knows.
-static bool receive_filter_allowed(const char *filter) {
-    return filter && strstr(filter, RECEIVE_TOPIC) != NULL;
-}
+#define SUBSCRIPTION_UNSUBSCRIBED 1
+#define SUBSCRIPTION_SUBSCRIBED   2
 
 static bool news_record_count(const char *label, u32 *out) {
     *out = 0;
@@ -80,29 +73,12 @@ static void native_receive(void) {
         }
     }
 
-    // Read-only probe: find a filter spelling the service accepts.
-    const char *filter = NULL;
-    for (size_t i = 0; i < sizeof(receive_filters)/sizeof(*receive_filters); i++) {
-        u32 status = 0;
-        Result rc = newsGetSubscriptionStatus(receive_filters[i], &status);
-        log_line("GetSubscriptionStatus %s: 0x%x (%d-%d), status=%lu\n", receive_filters[i],
-            rc, R_MODULE(rc), R_DESCRIPTION(rc), (unsigned long)status);
-        if (R_SUCCEEDED(rc) && !filter)
-            filter = receive_filters[i];
-    }
-    if (!filter) {
-        log_line("No filter spelling accepted; not subscribing.\n");
-        log_line("Report these result codes; the accepted form is undocumented.\n");
-        newsExit();
-        return;
-    }
-    if (!receive_filter_allowed(filter)) {
-        log_line("Refusing to write with a filter that is not " RECEIVE_TOPIC ".\n");
-        newsExit();
-        return;
-    }
-    log_line("Using filter: %s\n", filter);
-    if (!result("receive: SetSubscriptionStatus(1)", newsSetSubscriptionStatus(filter, 1))) {
+    const char *filter = RECEIVE_TOPIC;
+    u32 status = 0;
+    Result rc = newsGetSubscriptionStatus(filter, &status);
+    log_line("GetSubscriptionStatus %s: 0x%x (%d-%d), status=%lu\n", filter,
+        rc, R_MODULE(rc), R_DESCRIPTION(rc), (unsigned long)status);
+    if (!result("receive: SetSubscriptionStatus(2)", newsSetSubscriptionStatus(filter, SUBSCRIPTION_SUBSCRIBED))) {
         log_line("Subscription not changed; trying reception anyway.\n");
     } else {
         u32 status = 0;
@@ -127,24 +103,17 @@ static void native_receive(void) {
         else
             log_line("No new record yet; the module may retry on its own schedule.\n");
     }
-    log_line("Correlate this run with the server log: catalog, archives, summary, article.\n");
+    log_line("Correlate this run with the server log: /api/nx/v1/list/" RECEIVE_TOPIC ", then the article URLs it names.\n");
     log_line("To undo: press D-pad Down with ZR held to unsubscribe this topic.\n");
 }
 
-// Unsubscribe only our own topic; never ClearSubscriptionStatusAll, which
-// would drop the console's Nintendo channels too.
+// Unsubscribe only our own topic (status 1 = unsubscribed); never
+// ClearSubscriptionStatusAll, which would drop the console's Nintendo
+// channels too.
 static void native_unsubscribe(void) {
     if (!result("unsubscribe: news:a initialize", newsInitialize(NewsServiceType_Administrator)))
         return;
-    for (size_t i = 0; i < sizeof(receive_filters)/sizeof(*receive_filters); i++) {
-        u32 status = 0;
-        if (R_FAILED(newsGetSubscriptionStatus(receive_filters[i], &status)))
-            continue;
-        if (!receive_filter_allowed(receive_filters[i]))
-            continue;
-        result("unsubscribe: SetSubscriptionStatus(0)", newsSetSubscriptionStatus(receive_filters[i], 0));
-        log_line("Unsubscribed with filter: %s\n", receive_filters[i]);
-        break;
-    }
+    if (result("unsubscribe: SetSubscriptionStatus(1)", newsSetSubscriptionStatus(RECEIVE_TOPIC, SUBSCRIPTION_UNSUBSCRIBED)))
+        log_line("Unsubscribed: %s\n", RECEIVE_TOPIC);
     newsExit();
 }

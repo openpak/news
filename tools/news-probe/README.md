@@ -1,37 +1,43 @@
 # OpenPak News Probe
 
 Hardware experiment for [native News](../../docs/native-news-reopen.md).
-Version **0.21.0** adds firmware-driven reception: subscribe to the OpenPak
-channel and let the News module download it.
+Version **0.22.0** subscribes with the status value that the 22.5.0 firmware
+actually treats as subscribed (2) and lets the News module receive the
+channel.
 
-## Current v0.21 test: let the firmware receive OpenPak news
+## Current v0.22 test: let the firmware receive OpenPak news
 
 Copy `openpak-news-probe.nro` to `sd:/switch/openpak-news-probe/`, launch it
-and press **D-pad Down**. No reboot, no new server build: it runs against the
-deployed v006 fixtures. The probe
+and press **D-pad Down**. The probe
 
 1. lists the topics the firmware itself knows (`GetTopicList`),
-2. probes which subscription filter spelling the service accepts
-   (`GetSubscriptionStatus`, read only),
-3. subscribes to `openpak_news` (`SetSubscriptionStatus`), and
+2. logs the current status of `openpak_news` (`GetSubscriptionStatus`),
+3. sets it to **2 = subscribed** (`SetSubscriptionStatus`), and
 4. asks for an immediate receive (`RequestImmediateReception`),
 
 then waits 20 seconds and reports whether the record count grew. Everything
-after step 4 is stock firmware: the News module performs the download,
-verifies the container signature, decrypts, stores, and the **stock News
-applet** renders it. No article bytes pass through homebrew.
+after step 4 is stock firmware. The bcat worker fetches
+`https://bcat-list-lp1.cdn.nintendo.net/api/nx/v1/list/openpak_news?l=…`,
+downloads each article URL the list names, verifies and decrypts it, stores
+it, and the **stock News applet** renders it. No article bytes pass through
+homebrew.
+
+Status values (22.5.0): 0 = forget, 1 = unsubscribed, 2 = subscribed,
+3 = auto-subscribed. v0.21 wrote 1, which is why the console never stored
+anything it fetched. The topic argument is the bare topic id; the
+`topic_id='…'` spellings fail with 0x47d.
 
 This path keeps the console's existing setup: the BCAT verification-key
-patch, the News token patch and OpenPak DNS are all required, because the
-firmware's own downloader is the one fetching. Exit with **+**, open News,
-then copy back `report.txt` and correlate it with the server log.
+patch, the News token patch and OpenPak DNS are all required. It also needs
+the server's list route and the nx-baas forward for `bcat-list-lp1`. The
+list fetch goes through the edge-token helper, which the current News token
+patch does not cover. If no `/v1/list/` request reaches the server, that
+helper is the next suspect. Exit with **+**, open News, then copy back
+`report.txt` and correlate it with the server log.
 
-**ZR + D-pad Down** unsubscribes that one topic. `ClearSubscriptionStatusAll`
-is never called: it would drop the console's Nintendo channels too.
-
-The accepted filter format is undocumented, so a first run may report no
-accepted spelling. That result — the exact codes for each candidate — is the
-useful output; send it back rather than retrying.
+**ZR + D-pad Down** sets that one topic to 1 (unsubscribed).
+`ClearSubscriptionStatusAll` is never called: it would drop the console's
+Nintendo channels too.
 
 ## Fallback v0.20 test: sync articles without the firmware downloader
 

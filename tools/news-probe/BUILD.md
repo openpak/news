@@ -1,3 +1,25 @@
+# Probe 0.22.0 build record
+
+D-pad Down now subscribes with **status 2**. In 22.5.0, 1 means
+*unsubscribed* (0 = forget, 2 = subscribed, 3 = auto). v0.21 wrote 1, so the
+bcat worker never fetched `openpak_news` for this console and would not store
+records for it (0xd47d). The topic argument is the bare `openpak_news`, the
+only spelling hardware accepted in v0.21. The two `topic_id=` candidates and
+the read-only filter probe are gone. ZR + D-pad Down writes status 1
+(unsubscribed) for that one topic; `ClearSubscriptionStatusAll` is still
+never called. The report's correlation hint now names the module's real
+fetch, `/api/nx/v1/list/openpak_news`. The start-up banner, which had been
+left at 0.19.0, now reads 0.22.0.
+
+Built with the pinned toolchain below and -Wall -Wextra -Werror.
+NRO SHA-256: `3ac0a2d41eedd02b03b7937d23735479c7fd4813a9a4aad069806420db5cffde`.
+
+Server side, this needs the list route (news, 2026-09-23) deployed and
+nx-baas forwarding `bcat-list-lp1` `/api/nx/v1/list/openpak_*` to it. Not
+yet tested on hardware.
+
+## Previous build evidence
+
 # Probe 0.21.0 build record
 
 D-pad Down drives reception through the firmware: `GetTopicList` (30101) and
