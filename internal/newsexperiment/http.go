@@ -8,8 +8,22 @@
 //	<topic_id>/detail.bcat          per-channel detail record
 //	<topic_id>/icon.bcat            per-channel icon (JPEG plaintext)
 //	<topic_id>/archives.bcat        per-channel archives response
+//	<topic_id>/list.bcat            bcat-list response (optional in older trees)
 //	<topic_id>/<news_id>/summary.bcat, article.bcat   signed article pair
 //	<topic_id>/<news_id>/local.msgpack                plaintext post payload
+//	retired/<topic_id>/list.bcat                      expired list of a removed channel
+//	retired/<topic_id>/<news_id>/article.bcat         expired replacement article
+//	titles/<title_id>.bcat, titles/none.bcat          auto-subscription topic arrays
+//
+// The News module's own fetch is the bcat-list route
+// (/api/nx/v1/list/<topic>): it names each article's data URL and exact
+// size. nx-baas answers bcat-list for every other topic and forwards the
+// OpenPak ones (and titles/<tid>/topics) here with path and query intact,
+// so every route matches on path alone, whatever the Host header says.
+//
+// Every response carries a strong ETag (SHA-256 of the body) and goes
+// through http.ServeContent, which answers If-None-Match with 304 and
+// honours Range/If-Range: the module sends both.
 //
 // local.msgpack is the same decoded article payload, served unwrapped for
 // the homebrew sync helper: newsPostLocalNews takes MessagePack directly,
@@ -19,13 +33,15 @@
 // its three fixtures exist; the catalog is never decoded here because the
 // CDN holds no keys. A tree with no channel directories serves the (empty)
 // catalog alone — the builder's answer to "every channel retired/removed".
-// Deeper subdirectories (per-article containers) and a root "retired" tree
-// are prepared artifacts, not served routes. Unknown routes fail explicitly
-// rather than inventing a successful response.
+// Unknown routes fail explicitly rather than inventing a successful
+// response; the list, titles and latest_news prefixes never reach the
+// fallback, because the fallback is the nx-baas that forwards them here.
 package newsexperiment
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -36,12 +52,20 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/openpak/news/internal/bcatcontainer"
 )
 
-var reTopic = regexp.MustCompile(`^[a-z][a-z0-9_]{2,63}$`)
+var (
+	reTopic   = regexp.MustCompile(`^[a-z][a-z0-9_]{2,63}$`)
+	reTitleID = regexp.MustCompile(`^[0-9a-f]{16}$`)
+	reDigits  = regexp.MustCompile(`^[0-9]{1,20}$`)
+)
+
+// reserved root directories are not topics.
+var reserved = map[string]bool{"retired": true, "titles": true}
 
 // Handler keeps keys off the CDN and loads a bounded set of immutable fixtures.
 func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handler, error) {
@@ -64,13 +88,13 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		return nil, err
 	}
 	type channel struct {
-		detail, icon, archives []byte
-		articles               map[string]map[string][]byte
-		local                  map[string][]byte
+		detail, icon, archives, list []byte
+		articles                     map[string]map[string][]byte
+		local                        map[string][]byte
 	}
 	channels := map[string]channel{}
 	for _, e := range entries {
-		if !e.IsDir() || e.Name() == "retired" {
+		if !e.IsDir() || reserved[e.Name()] {
 			continue
 		}
 		topic := e.Name()
@@ -88,6 +112,12 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 			}
 			*f.dst = b
 		}
+		if ch.list, err = optionalFixture(filepath.Join(dir, topic, "list.bcat")); err != nil {
+			return nil, fmt.Errorf("channel %s: %w", topic, err)
+		}
+		if ch.list == nil {
+			logger.Warn("channel has no list fixture; the News module cannot receive it", "topic", topic)
+		}
 		ch.articles = map[string]map[string][]byte{}
 		ch.local = map[string][]byte{}
 		children, err := os.ReadDir(filepath.Join(dir, topic))
@@ -98,8 +128,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 			if !child.IsDir() {
 				continue
 			}
-			id, err := strconv.ParseUint(child.Name(), 10, 32)
-			if err != nil || id == 0 || strconv.FormatUint(id, 10) != child.Name() {
+			if !validNewsID(child.Name()) {
 				return nil, fmt.Errorf("invalid article directory %s/%s", topic, child.Name())
 			}
 			resources := map[string][]byte{}
@@ -131,14 +160,41 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 	if len(channels) == 0 {
 		logger.Warn("no channel fixture directories; serving an empty catalog")
 	}
+	retired, err := loadRetired(filepath.Join(dir, "retired"))
+	if err != nil {
+		return nil, err
+	}
+	titles, err := loadTitles(filepath.Join(dir, "titles"))
+	if err != nil {
+		return nil, err
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/nx/v1/topics/catalog", serveFixture(catalog, "catalog", logger))
+	// The bcat-list, titles and latest_news prefixes answer 404 themselves
+	// instead of reaching the fallback (see the package comment).
+	notFound := func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("news route not served", "method", r.Method, "path", r.URL.Path)
+		http.NotFound(w, r)
+	}
+	mux.HandleFunc("GET /api/nx/v1/list/", notFound)
+	mux.HandleFunc("GET /api/nx/v1/titles/", notFound)
+	mux.HandleFunc("GET /api/nx/v2/latest_news/", notFound)
+	var newestID uint64
+	var newestSummary []byte
 	for topic, ch := range channels {
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/detail", serveFixture(ch.detail, topic+"/detail", logger))
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/icon", serveFixture(ch.icon, topic+"/icon", logger))
 		mux.HandleFunc("GET /api/nx/v2/topics/"+topic+"/online_archives", serveFixture(ch.archives, topic+"/archives", logger))
-		// The native module's downloader asks the v1 topic paths (observed
-		// 2026-09-16): channel archives and per-article containers.
+		if ch.list != nil {
+			if _, dup := retired.lists[topic]; dup {
+				return nil, fmt.Errorf("topic %s has both a live and a retired list", topic)
+			}
+			mux.HandleFunc("GET /api/nx/v1/list/"+topic, serveFixture(ch.list, topic+"/list", logger))
+		}
+		// v1 archives and <id>/article: kept because a 2026-09-16 capture
+		// showed requests for them, but 22.5.0 builds neither path — not
+		// qlaunch, not the bcat module. The module's article fetches go to
+		// the URLs its list names (/openpak/v1/.../article below).
 		mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/archives", serveFixture(ch.archives, topic+"/archives", logger))
 		for id, resources := range ch.articles {
 			for name, data := range resources {
@@ -148,10 +204,47 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 					mux.HandleFunc("GET /api/nx/v1/topics/"+topic+"/"+id+"/article", serveFixture(data, label, logger))
 				}
 			}
+			// News ids are YYMMDD + sequence, so the largest is the newest.
+			if n, _ := strconv.ParseUint(id, 10, 32); n > newestID {
+				newestID, newestSummary = n, resources["summary"]
+			}
 		}
 		for id, payload := range ch.local {
 			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/news/"+id, serveFixture(payload, topic+"/"+id+"/local", logger))
 		}
+	}
+	for topic, list := range retired.lists {
+		mux.HandleFunc("GET /api/nx/v1/list/"+topic, serveFixture(list, "retired/"+topic+"/list", logger))
+	}
+	for rel, data := range retired.articles {
+		topic, id, _ := strings.Cut(rel, "/")
+		mux.HandleFunc("GET /openpak/v1/topics/"+topic+"/news/"+id+"/expired", serveFixture(data, "retired/"+rel, logger))
+	}
+	if titles.none != nil {
+		mux.HandleFunc("GET /api/nx/v1/titles/{tid}/topics", func(w http.ResponseWriter, r *http.Request) {
+			tid := r.PathValue("tid")
+			if !reTitleID.MatchString(tid) {
+				notFound(w, r)
+				return
+			}
+			data, label := titles.byID[tid], "titles/"+tid
+			if data == nil {
+				data, label = titles.none, "titles/none"
+			}
+			serveFixture(data, label, logger)(w, r)
+		})
+	}
+	// latest_news/<n>: qlaunch's own request (trigger unknown). Answered
+	// with the newest OpenPak article's summary card, whatever n is.
+	if newestSummary != nil {
+		label := "latest_news/" + strconv.FormatUint(newestID, 10)
+		mux.HandleFunc("GET /api/nx/v2/latest_news/{n}", func(w http.ResponseWriter, r *http.Request) {
+			if !reDigits.MatchString(r.PathValue("n")) {
+				notFound(w, r)
+				return
+			}
+			serveFixture(newestSummary, label, logger)(w, r)
+		})
 	}
 	// Sync index for the homebrew helper: one "<topic> <news_id> <bytes>"
 	// line per postable article, sorted so the bytes are stable.
@@ -205,10 +298,122 @@ func loadFixture(path string) ([]byte, error) {
 	return data, nil
 }
 
+// optionalFixture is loadFixture for a file that may be absent (nil, nil).
+func optionalFixture(path string) ([]byte, error) {
+	data, err := loadFixture(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return data, err
+}
+
+func validNewsID(name string) bool {
+	id, err := strconv.ParseUint(name, 10, 32)
+	return err == nil && id != 0 && strconv.FormatUint(id, 10) == name
+}
+
+type retiredTree struct {
+	lists    map[string][]byte // topic -> expired list
+	articles map[string][]byte // "topic/id" -> expired replacement
+}
+
+// loadRetired reads retired/: an expired list per removed channel and the
+// expired replacement of every retired article. The tree is optional.
+func loadRetired(root string) (retiredTree, error) {
+	t := retiredTree{lists: map[string][]byte{}, articles: map[string][]byte{}}
+	topics, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return t, nil
+	}
+	if err != nil {
+		return t, err
+	}
+	for _, e := range topics {
+		if !e.IsDir() {
+			continue
+		}
+		topic := e.Name()
+		if !reTopic.MatchString(topic) || reserved[topic] {
+			return t, fmt.Errorf("retired directory %q is not a valid topic id", topic)
+		}
+		list, err := optionalFixture(filepath.Join(root, topic, "list.bcat"))
+		if err != nil {
+			return t, fmt.Errorf("retired %s: %w", topic, err)
+		}
+		if list != nil {
+			t.lists[topic] = list
+		}
+		children, err := os.ReadDir(filepath.Join(root, topic))
+		if err != nil {
+			return t, err
+		}
+		for _, child := range children {
+			if !child.IsDir() {
+				continue
+			}
+			if !validNewsID(child.Name()) {
+				return t, fmt.Errorf("invalid retired article directory %s/%s", topic, child.Name())
+			}
+			data, err := loadFixture(filepath.Join(root, topic, child.Name(), "article.bcat"))
+			if err != nil {
+				return t, fmt.Errorf("retired article %s/%s: %w", topic, child.Name(), err)
+			}
+			t.articles[topic+"/"+child.Name()] = data
+		}
+	}
+	return t, nil
+}
+
+type titleTree struct {
+	none []byte            // answer for every unmapped title
+	byID map[string][]byte // title id -> topic array
+}
+
+// loadTitles reads titles/. Without none.bcat the titles route answers 404
+// (an older tree); with it, unmapped titles get that empty array.
+func loadTitles(root string) (titleTree, error) {
+	t := titleTree{byID: map[string][]byte{}}
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return t, nil
+	}
+	if err != nil {
+		return t, err
+	}
+	for _, e := range entries {
+		name, ok := strings.CutSuffix(e.Name(), ".bcat")
+		if e.IsDir() || !ok {
+			continue
+		}
+		if name != "none" && !reTitleID.MatchString(name) {
+			return t, fmt.Errorf("titles/%s is not a title id", e.Name())
+		}
+		data, err := loadFixture(filepath.Join(root, e.Name()))
+		if err != nil {
+			return t, err
+		}
+		if name == "none" {
+			t.none = data
+		} else {
+			t.byID[name] = data
+		}
+	}
+	if t.none == nil && len(t.byID) > 0 {
+		return t, fmt.Errorf("titles/none.bcat missing: unmapped titles would have no answer")
+	}
+	return t, nil
+}
+
+// serveFixture answers with a strong ETag over the exact bytes, so the
+// module's If-None-Match revalidation gets 304 while nothing changed and
+// If-Range/Range resumes only against the same bytes.
 func serveFixture(data []byte, label string, logger *slog.Logger) http.HandlerFunc {
+	sum := sha256.Sum256(data)
+	etag := `"` + hex.EncodeToString(sum[:16]) + `"`
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("ETag", etag)
 		logger.Info("news fixture", "method", r.Method, "fixture", label, "bytes", len(data))
 		http.ServeContent(w, r, label, time.Time{}, bytes.NewReader(data))
 	}

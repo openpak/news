@@ -207,14 +207,24 @@ func TestHandlerRejectsBadLayouts(t *testing.T) {
 			t.Fatal("JSON fixture accepted")
 		}
 	})
-	t.Run("retired tree ignored", func(t *testing.T) {
+	t.Run("retired article without its container", func(t *testing.T) {
 		dir := writeTree(t, "openpak_news")
 		ret := filepath.Join(dir, "retired", "openpak_news", "2609100001")
 		if err := os.MkdirAll(ret, 0755); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Handler(dir, nil, nil); err != nil {
-			t.Fatalf("retired tree rejected: %v", err)
+		if _, err := Handler(dir, nil, nil); err == nil {
+			t.Fatal("retired article directory without article.bcat accepted")
+		}
+	})
+	t.Run("titles without none", func(t *testing.T) {
+		dir := writeTree(t, "openpak_news")
+		if err := os.Mkdir(filepath.Join(dir, "titles"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		fixture(t, filepath.Join(dir, "titles"), "0100abcd12340000.bcat")
+		if _, err := Handler(dir, nil, nil); err == nil {
+			t.Fatal("titles tree without none.bcat accepted")
 		}
 	})
 }
@@ -302,5 +312,160 @@ func TestLocalSyncRoutes(t *testing.T) {
 	}
 	if _, err := Handler(dir, nil, nil); err == nil {
 		t.Fatal("empty local payload accepted")
+	}
+}
+
+// writeReceptionTree adds what the module's own reception needs: a list per
+// channel, one article, a retired channel and the titles answers.
+func writeReceptionTree(t *testing.T) string {
+	t.Helper()
+	dir := writeTree(t, "openpak_news", "openpak_games")
+	for _, topic := range []string{"openpak_news", "openpak_games"} {
+		fixture(t, filepath.Join(dir, topic), "list.bcat")
+	}
+	for _, id := range []string{"2609100001", "2609110005"} {
+		art := filepath.Join(dir, "openpak_news", id)
+		if err := os.MkdirAll(art, 0755); err != nil {
+			t.Fatal(err)
+		}
+		fixture(t, art, "article.bcat")
+		fixture(t, art, "summary.bcat")
+	}
+	for _, rel := range []string{"retired/openpak_old", "retired/openpak_news/2609100002", "titles"} {
+		if err := os.MkdirAll(filepath.Join(dir, filepath.FromSlash(rel)), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fixture(t, filepath.Join(dir, "retired", "openpak_old"), "list.bcat")
+	fixture(t, filepath.Join(dir, "retired", "openpak_news", "2609100002"), "article.bcat")
+	fixture(t, filepath.Join(dir, "titles"), "none.bcat")
+	fixture(t, filepath.Join(dir, "titles"), "0100abcd12340000.bcat")
+	return dir
+}
+
+func get(t *testing.T, h http.Handler, path string, header ...string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest("GET", path, nil)
+	for i := 0; i+1 < len(header); i += 2 {
+		req.Header.Set(header[i], header[i+1])
+	}
+	r := httptest.NewRecorder()
+	h.ServeHTTP(r, req)
+	return r
+}
+
+func TestReceptionRoutes(t *testing.T) {
+	dir := writeReceptionTree(t)
+	// The fallback stands for nx-baas: list and titles must never reach it,
+	// or a forwarded request would loop back.
+	h, err := Handler(dir, nil, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(418) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(rel string) []byte {
+		b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	for path, rel := range map[string]string{
+		"/api/nx/v1/list/openpak_news?l=en-GB&c%5B%5D=GB":         "openpak_news/list.bcat",
+		"/api/nx/v1/list/openpak_games?l=en-US":                   "openpak_games/list.bcat",
+		"/api/nx/v1/list/openpak_old?l=en-GB":                     "retired/openpak_old/list.bcat",
+		"/openpak/v1/topics/openpak_news/news/2609100002/expired": "retired/openpak_news/2609100002/article.bcat",
+		"/api/nx/v1/titles/0100abcd12340000/topics?c%5B%5D=GB":    "titles/0100abcd12340000.bcat",
+		"/api/nx/v1/titles/01006f8002326000/topics":               "titles/none.bcat",
+		"/api/nx/v2/latest_news/1?l=en-GB":                        "openpak_news/2609110005/summary.bcat",
+		"/openpak/v1/topics/openpak_news/news/2609100001/article": "openpak_news/2609100001/article.bcat",
+	} {
+		r := get(t, h, path)
+		if r.Code != 200 || !bytes.Equal(r.Body.Bytes(), read(rel)) {
+			t.Fatalf("%s: code=%d, want %s", path, r.Code, rel)
+		}
+		if r.Header().Get("ETag") == "" {
+			t.Fatalf("%s: no ETag", path)
+		}
+	}
+	for _, path := range []string{
+		"/api/nx/v1/list/nx_news?l=en-GB",
+		"/api/nx/v1/list/openpak_help",
+		"/api/nx/v1/list/openpak_news/extra",
+		"/api/nx/v1/titles/0100ABCD12340000/topics",
+		"/api/nx/v1/titles/0100abcd1234/topics",
+		"/api/nx/v2/latest_news/abc",
+	} {
+		if r := get(t, h, path); r.Code != 404 {
+			t.Fatalf("%s: code=%d, want 404", path, r.Code)
+		}
+	}
+	// Forwarded requests keep the Nintendo Host (or none at all).
+	req := httptest.NewRequest("GET", "http://bcat-list-lp1.cdn.nintendo.net/api/nx/v1/list/openpak_news?l=en-GB", nil)
+	r := httptest.NewRecorder()
+	h.ServeHTTP(r, req)
+	if r.Code != 200 {
+		t.Fatal("list route depends on Host")
+	}
+}
+
+func TestETagAndRange(t *testing.T) {
+	dir := writeReceptionTree(t)
+	h, err := Handler(dir, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"/api/nx/v1/topics/catalog",
+		"/api/nx/v1/topics/openpak_news/detail",
+		"/api/nx/v1/topics/openpak_news/icon",
+		"/api/nx/v2/topics/openpak_news/online_archives",
+		"/openpak/v1/topics/openpak_news/news/2609100001/summary",
+		"/openpak/v1/topics/openpak_news/news/2609100001/article",
+		"/api/nx/v1/list/openpak_news",
+		"/api/nx/v1/titles/0100abcd12340000/topics",
+	} {
+		first := get(t, h, path)
+		etag := first.Header().Get("ETag")
+		if first.Code != 200 || len(etag) != 34 || etag[0] != '"' {
+			t.Fatalf("%s: code=%d etag=%q", path, first.Code, etag)
+		}
+		if again := get(t, h, path); again.Header().Get("ETag") != etag {
+			t.Fatalf("%s: ETag not stable", path)
+		}
+		if r := get(t, h, path, "If-None-Match", etag); r.Code != 304 || r.Body.Len() != 0 {
+			t.Fatalf("%s: If-None-Match code=%d", path, r.Code)
+		}
+		if r := get(t, h, path, "If-None-Match", `"other"`); r.Code != 200 {
+			t.Fatalf("%s: stale If-None-Match code=%d", path, r.Code)
+		}
+		body := first.Body.Bytes()
+		r := get(t, h, path, "Range", "bytes=16-")
+		if r.Code != 206 || !bytes.Equal(r.Body.Bytes(), body[16:]) {
+			t.Fatalf("%s: Range code=%d", path, r.Code)
+		}
+		// A resume against changed bytes must restart from zero.
+		if r := get(t, h, path, "Range", "bytes=16-", "If-Range", etag); r.Code != 206 {
+			t.Fatalf("%s: matching If-Range code=%d", path, r.Code)
+		}
+		if r := get(t, h, path, "Range", "bytes=16-", "If-Range", `"other"`); r.Code != 200 || !bytes.Equal(r.Body.Bytes(), body) {
+			t.Fatalf("%s: stale If-Range code=%d", path, r.Code)
+		}
+	}
+	// Different bytes, different ETag.
+	a := get(t, h, "/api/nx/v1/list/openpak_news").Header().Get("ETag")
+	b := get(t, h, "/api/nx/v1/list/openpak_games").Header().Get("ETag")
+	if a == b {
+		t.Fatal("distinct fixtures share an ETag")
+	}
+}
+
+func TestLiveAndRetiredListConflict(t *testing.T) {
+	dir := writeReceptionTree(t)
+	if err := os.MkdirAll(filepath.Join(dir, "retired", "openpak_games"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	fixture(t, filepath.Join(dir, "retired", "openpak_games"), "list.bcat")
+	if _, err := Handler(dir, nil, nil); err == nil {
+		t.Fatal("topic with a live and a retired list accepted")
 	}
 }
