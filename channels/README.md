@@ -70,6 +70,15 @@ article language must be listed), `lifetime_days` (1..30), `art`
 `{"type": "browser", "url": "https://…"}` (see the
 [authoring guide](../docs/native-news-authoring-guide.md)).
 
+Optional article fields (the admin API writes them; see
+[`docs/admin-api.md`](../docs/admin-api.md)): `published_at` (RFC 3339 UTC;
+absent = the build's `--published`), `priority` (51..1998, default 100),
+`pickup_days` (0..`lifetime_days`, default until expiry) and
+`essential_pickup` (`{"pickup_days", "priority_after"}`, default none). A
+file without them builds byte-identically to before. An uploaded channel
+icon at `icons/<topic_id>.png|jpg` replaces the motif icon. `screenshots`
+and `icons` are reserved topic ids.
+
 Optional channel fields in `lineup.json`: `shop_query` (the channel page's
 eShop button), `application_ids` (titles whose launch auto-subscribes the
 console to the channel) and `test_distribution` (bypasses the console's

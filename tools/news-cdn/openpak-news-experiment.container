@@ -1,16 +1,30 @@
+# v008+: console CDN (TLS :20040) plus the admin API (plain HTTP :20043,
+# openpak network only; no PublishPort). See docs/admin-api.md and
+# next-session.md for the secrets and the rollback.
 [Unit]
-Description=OpenPak signed News container hardware experiment
+Description=OpenPak native News CDN and admin API
 After=openpak-nx-baas.service
 [Container]
 ContainerName=openpak-news-experiment
-Image=localhost/openpak-news-experiment:v006
+Image=localhost/openpak-news-experiment:v008
 Network=openpak.network
-Volume=%h/openpak/deploy/news-experiment/cdn-v003:/fixtures:ro,Z
+# Served until the first publish; later builds live in /data.
+Volume=%h/openpak/deploy/news-experiment/cdn-v005:/fixtures:ro,Z
 Volume=%h/openpak/deploy/news-experiment/tls:/tls:ro,Z
+Volume=%h/openpak/deploy/news-experiment/data:/data:Z
+# Imported into an empty /data on first start only.
+Volume=%h/openpak/deploy/news-experiment/channels-import:/channels:ro,Z
+Secret=news-signing-key,type=mount,target=/run/secrets/news-signing-key,mode=0400
+Secret=news-aes-key,type=mount,target=/run/secrets/news-aes-key,mode=0400
+Secret=news-admin-key,type=env,target=NEWS_ADMIN_KEY
+Secret=nx-baas-internal-key,type=env,target=NX_BAAS_INTERNAL_KEY
+Environment=NEWS_SIGNING_KEY=/run/secrets/news-signing-key
+Environment=NEWS_AES_KEY=/run/secrets/news-aes-key
+Environment=NX_BAAS_PUSH_URL=http://openpak-nx-baas:20070/internal/news/push
 ReadOnly=true
 NoNewPrivileges=true
 DropCapability=all
-Exec=-listen :20040 -dir /fixtures -tls-cert /tls/server.pem -tls-key /tls/server.key -fallback https://openpak-nx-baas:21000 -fallback-ca /tls/ca.pem -fallback-server-name bcat-topics-lp1.cdn.nintendo.net
+Exec=-listen :20040 -dir /fixtures -data /data -import /channels -admin-listen :20043 -tls-cert /tls/server.pem -tls-key /tls/server.key -fallback https://openpak-nx-baas:21000 -fallback-ca /tls/ca.pem -fallback-server-name bcat-topics-lp1.cdn.nintendo.net
 [Service]
 Restart=on-failure
 [Install]

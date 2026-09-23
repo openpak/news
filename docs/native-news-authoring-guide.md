@@ -19,8 +19,9 @@ Start here for current behavior; the older spike documents are historical.
 | Server-delivered article | Not yet demonstrated; local posting success is a different path |
 | Cleanup | Verified expired test later disappeared, count 14→13; no general immediate-delete guarantee |
 
-The current service is a fixed-fixture experiment. There is no working native
-channel CRUD API or automatic bridge from authored articles to this CDN yet.
+The current service is a fixed-fixture experiment. **Update 2026-09-23:**
+`newscdn -data` now has a channel and article CRUD API with server-side
+publishing ([contract](admin-api.md)). It is committed but not deployed.
 The original server-only NO-GO still applies to unpatched consoles.
 
 ## Create an offline channel and article

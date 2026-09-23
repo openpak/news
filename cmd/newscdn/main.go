@@ -1,18 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// newscdn serves pre-signed BCAT fixtures without access to content-signing keys.
+// newscdn serves signed BCAT fixtures to consoles. Without -data it serves
+// one pre-signed tree and holds no keys. With -data it also runs the admin
+// API (docs/admin-api.md) on a separate plain-HTTP listener: channels and
+// articles are authored there, and a publish signs a new tree in-process
+// (keys from NEWS_SIGNING_KEY / NEWS_AES_KEY) and switches to it without a
+// restart.
 package main
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"github.com/openpak/news/internal/newsexperiment"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
+
+	"github.com/openpak/news/internal/newsadmin"
+	"github.com/openpak/news/internal/newsexperiment"
 )
 
 func main() {
@@ -23,9 +32,16 @@ func main() {
 	upstream := flag.String("fallback", "", "fixed HTTPS adapter upstream for other routes")
 	ca := flag.String("fallback-ca", "", "adapter CA certificate file")
 	serverName := flag.String("fallback-server-name", "", "adapter certificate DNS name")
+	data := flag.String("data", "", "writable data directory: enables authoring, publishing and the admin API")
+	importDir := flag.String("import", "", "channels/ directory imported into an empty -data")
+	importShots := flag.Bool("import-screenshots", false, "also import the channels/screenshots/ captures")
+	importManifest := flag.String("import-manifest", "", "manifest.json of the last file-based build, for overwrite continuity")
+	adminListen := flag.String("admin-listen", ":20043", "plain-HTTP admin API listener (internal network only)")
+	keep := flag.Int("keep-builds", 10, "published builds to keep (minimum 2)")
+	verifyKey := flag.String("verify-key", "", "public key PEM to verify containers against (default: the committed OpenPak console key)")
 	flag.Parse()
-	if *dir == "" || (*cert == "") != (*key == "") {
-		log.Fatal("require -dir and either both TLS files or neither")
+	if (*dir == "" && *data == "") || (*cert == "") != (*key == "") {
+		log.Fatal("require -dir or -data, and either both TLS files or neither")
 	}
 	var fallback http.Handler
 	if *upstream != "" {
@@ -49,9 +65,15 @@ func main() {
 		proxy.Transport = transport
 		fallback = proxy
 	}
-	h, err := newsexperiment.Handler(*dir, nil, fallback)
-	if err != nil {
-		log.Fatal(err)
+	var h http.Handler
+	var err error
+	if *data == "" {
+		h, err = newsexperiment.Handler(*dir, nil, fallback)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		h = startAdmin(*data, *dir, *importDir, *importShots, *importManifest, *adminListen, *keep, *verifyKey, fallback)
 	}
 	// Match the existing console adapter's non-hybrid curves and legacy TLS
 	// support. This listener serves only the redirected console News hostname.
@@ -83,4 +105,47 @@ func main() {
 		err = srv.ListenAndServe()
 	}
 	log.Fatal(err)
+}
+
+// startAdmin opens the data directory, starts the admin listener and
+// returns the switchable console handler. Secrets come from the
+// environment only and are never logged.
+func startAdmin(data, static, importDir string, importShots bool, importManifest, listen string, keep int, verifyKey string, fallback http.Handler) http.Handler {
+	sw := &newsexperiment.Switch{}
+	cfg := newsadmin.Config{
+		DataDir: data, ImportDir: importDir, ImportScreenshots: importShots, ImportManifest: importManifest,
+		SigningKeyPath: os.Getenv("NEWS_SIGNING_KEY"), AESKeyPath: os.Getenv("NEWS_AES_KEY"),
+		KeepBuilds: keep, StaticDir: static, Fallback: fallback, Switch: sw,
+	}
+	if verifyKey != "" {
+		raw, err := os.ReadFile(verifyKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if cfg.VerifyKey, err = newsadmin.ParseVerifyKey(raw); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if u := os.Getenv("NX_BAAS_PUSH_URL"); u != "" {
+		wait, _ := strconv.Atoi(os.Getenv("NX_BAAS_PUSH_WAIT_RANGE"))
+		cfg.Push = &newsadmin.Pusher{URL: u, Key: os.Getenv("NX_BAAS_INTERNAL_KEY"), WaitRange: wait}
+	}
+	svc, err := newsadmin.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	adminKey := os.Getenv("NEWS_ADMIN_KEY")
+	if adminKey == "" {
+		slog.Warn("NEWS_ADMIN_KEY is not set: the admin API answers 503 to everything")
+	}
+	if cfg.SigningKeyPath == "" || cfg.AESKeyPath == "" {
+		slog.Warn("NEWS_SIGNING_KEY / NEWS_AES_KEY not set: publishing is disabled")
+	}
+	admin := &http.Server{Addr: listen, Handler: svc.Handler(adminKey), ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout: time.Minute, WriteTimeout: 5 * time.Minute, IdleTimeout: time.Minute, MaxHeaderBytes: 16 << 10}
+	go func() {
+		log.Printf("News admin API listening on %s (plain HTTP, internal network only)", listen)
+		log.Fatal(admin.ListenAndServe())
+	}()
+	return sw
 }

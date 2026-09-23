@@ -43,7 +43,7 @@ Every non-2xx response is `{"error": "<human-readable message>"}`.
 | 415 | Image upload that is not PNG or JPEG |
 | 422 | `publish`: the source does not build (the message says why; nothing was switched) |
 | 500 | Signing, verification or I/O failure (nothing was switched) |
-| 503 | API disabled (`NEWS_ADMIN_KEY` unset), or `publish` without signing keys configured |
+| 503 | API disabled (`NEWS_ADMIN_KEY` unset), or `publish` without usable signing keys (missing files, or a signing key that does not match the console verification key) |
 
 ## Channels
 
@@ -62,6 +62,7 @@ Every non-2xx response is `{"error": "<human-readable message>"}`.
   "application_ids": ["0100abcd12340000"],
   "test_distribution": false,
   "retired": false,
+  "retire_reason": "",
   "article_count": 8,
   "active_article_count": 8
 }
@@ -79,7 +80,7 @@ Every non-2xx response is `{"error": "<human-readable message>"}`.
 | `shop_query` | Optional raw eShop query for the channel page's shop button, at most 1024 bytes. Empty = no button |
 | `application_ids` | Optional title ids, 16 lowercase hex digits each, at most 64. Launching one of those titles auto-subscribes the console to the channel |
 | `test_distribution` | Boolean. Makes consoles ignore their received-id history for this channel. **Test channels only** |
-| `retired` | Read-only here; change it with `PATCH` (below) |
+| `retired`, `retire_reason` | Read-only here; change them with `PATCH` (below) |
 | `article_count`, `active_article_count` | Read-only. All articles / articles not retired |
 
 ### Endpoints
@@ -90,13 +91,15 @@ Every non-2xx response is `{"error": "<human-readable message>"}`.
 | `POST /admin/v1/channels` | Channel fields (`topic_id`, `name`, `publisher`, `description` required) | `201 Channel`. `409` if the topic id exists (live or retired) |
 | `GET /admin/v1/channels/{topic}` | – | `200 Channel` |
 | `PATCH /admin/v1/channels/{topic}` | Any subset of the writable fields, plus `retired` and `retire_reason` | `200 Channel` |
-| `PUT /admin/v1/channels/{topic}/icon` | Raw PNG or JPEG bytes, `Content-Type: image/png` or `image/jpeg` | `200 Channel` (`has_icon_image: true`) |
+| `PUT /admin/v1/channels/{topic}/icon` | Raw PNG or JPEG bytes, `Content-Type: image/png`, `image/jpeg` or `application/octet-stream` (the bytes are sniffed) | `200 Channel` (`has_icon_image: true`) |
 | `GET /admin/v1/channels/{topic}/icon` | – | `200` the uploaded image as stored, `404` if none |
 | `DELETE /admin/v1/channels/{topic}/icon` | – | `200 Channel` (back to the motif) |
 
 `PATCH` is a JSON merge: absent keys keep their value, `null` resets a key to
 its default (empty `shop_query`, no `application_ids`, …). `topic_id` cannot be
-changed (`400`). Unknown keys are rejected (`400`).
+changed (`400` if it differs). Unknown keys are rejected (`400`). Read-only
+keys (`has_icon_image`, `article_count`, …) are ignored, so a `GET` response
+can be edited and sent back as is. The same rules apply to `POST`.
 
 The icon is rendered at publish time to the 70×70 baseline JPEG the console
 accepts, center-cropped. Images: PNG or JPEG, at most 16 MiB and 8192×8192.
@@ -175,8 +178,11 @@ Title ids are 16 lowercase hex digits (`0100abcd12340000`).
 | `GET /admin/v1/channels/{topic}/articles/{id}/image` | – | `200` the uploaded image as stored, `404` if none |
 | `DELETE /admin/v1/channels/{topic}/articles/{id}/image` | – | `200 Article` (back to the motif) |
 
-`PATCH` is a JSON merge, as for channels. `news_id` and `topic_id` cannot be
-changed.
+`PATCH` is a JSON merge, as for channels (`null` resets `more`,
+`pickup_days`, `priority`, `essential_pickup`, `published_at`, `footer`).
+`news_id` cannot be changed (`400` if it differs); `topic_id` and the other
+read-only keys are ignored. Every article operation except `GET` answers
+`409` while the channel is retired.
 
 **Retiring an article** — `PATCH {"retired": true, "retire_reason": "…"}`
 (reason required). The next publish removes it from the archive and lists
@@ -246,8 +252,9 @@ keeps the source as it was and records `last_error`.
 
 Body optional: `{"build": N}`. Without it, switches back to the build that
 was served before the current one; with it, to any kept build. `200` with
-the same shape as publish (`build` is the build now served, `revision` a new
-revision, `changed_topics` compared with the build that was served). `409` if
+the same shape as publish (`build` is the build now served, `published_at`
+its build time, `revision` a new revision, `changed_topics` compared with the
+build that was served, and pushed like a publish). `409` if
 there is nothing to roll back to or the build is not kept.
 
 Rollback changes what consoles are served, **not** the source: the edits

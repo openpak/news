@@ -3,10 +3,6 @@
 package main
 
 import (
-	"bytes"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
 	"os"
@@ -36,25 +32,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	block, rest := pem.Decode(encoded)
-	if block == nil || len(bytes.TrimSpace(rest)) != 0 {
-		return fmt.Errorf("expected one private-key PEM block")
-	}
-	var signing *rsa.PrivateKey
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		signing, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-	case "PRIVATE KEY":
-		var parsed any
-		parsed, err = x509.ParsePKCS8PrivateKey(block.Bytes)
-		if err == nil {
-			signing, _ = parsed.(*rsa.PrivateKey)
-		}
-	default:
-		return fmt.Errorf("unsupported private-key PEM type")
-	}
-	if err != nil || signing == nil {
-		return fmt.Errorf("invalid RSA private key")
+	signing, err := bcatcontainer.ParsePrivateKeyPEM(encoded)
+	if err != nil {
+		return err
 	}
 	out, err := bcatcontainer.Encode(plain, key, byte(*index), signing)
 	if err != nil {

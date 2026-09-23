@@ -14,4 +14,8 @@ service owns a block of ten: +0 HTTP, +1 gRPC, +2 metrics/pprof, +3..+9 spare.
 | --- | --- | --- | --- | --- |
 | 20040 | `news` | 20040 | 20041 | 20042 |
 
+The native News CDN (`newscdn`, container `openpak-news-experiment`) uses
++0 for its TLS console listener and **+3 (20043) for its plain-HTTP admin
+API** (internal network only, `docs/admin-api.md`).
+
 Other services' rows live in the canonical ports.md.

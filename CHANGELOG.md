@@ -5,6 +5,13 @@ of truth; this file is the readable summary.
 
 ## Unreleased
 
+- Native News admin API (`newscdn -data`, `docs/admin-api.md`; not deployed):
+  - channel and article CRUD over a writable `/data` source (the channels/ format), with image uploads for channel icons and article banners
+  - `POST /publish` builds with `internal/newsseed`, signs and verifies every container in-process against the committed console key, and swaps the served tree atomically; `POST /rollback`, `GET /status`, last N builds kept
+  - overwrite continuity across publishes and rollbacks (baseline = newest build's manifest)
+  - pushes `{topic_id, revision}` to nx-baas for changed topics (failures logged, not fatal)
+  - article `published_at` (stamped at first publish), `priority`, `pickup_days`, `essential_pickup`; channel icon upload
+  - `cmd/newsseed` build logic moved to `internal/newsseed` (byte-identical output); the image is Alpine + cjpeg
 - Native News, from the 22.5.0 firmware audit (not deployed, untested on hardware):
   - bcat-list per topic (`/api/nx/v1/list/<topic>`), signed like every other container, in the parser's key order; entries link each article container with its exact size
   - list `overwrite` on content change, retirement and unretirement; `service_status: "expired"` for removed channels

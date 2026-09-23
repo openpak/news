@@ -2,6 +2,12 @@
 
 **Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](docs/native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
 
+**Server-side authoring (2026-09-23, committed, not deployed):** `newscdn -data`
+runs an internal admin API ([contract](docs/admin-api.md)) that the website
+dashboard uses to create and edit channels and articles and to publish them.
+Publishing signs in-process on the server and switches the console tree
+atomically, without a restart. See [Native News admin API](#native-news-admin-api-newscdn--data).
+
 Start native Switch work with the [creation guide](docs/native-news-authoring-guide.md),
 [editable sample](examples/native-news/README.md), [channel lineup
 seed](channels/README.md), and [agent handoff](docs/native-news-agent-handoff.md).
@@ -97,6 +103,45 @@ All responses carry `ETag`, `Last-Modified`, `Cache-Control` and answer
 Ports follow `../ports.md` block 20040: HTTP `:20040`, gRPC `:20041`,
 metrics/pprof `:20042` (`NEWS_HTTP_ADDR`, `NEWS_GRPC_ADDR`,
 `NEWS_METRICS_ADDR`).
+
+## Native News admin API (`newscdn -data`)
+
+`cmd/newscdn` serves the signed console tree on its TLS listener (`:20040`).
+With `-data DIR` it also runs the admin API from
+[`docs/admin-api.md`](docs/admin-api.md) on a separate plain-HTTP listener
+(`-admin-listen`, default `:20043`, internal network only):
+
+- `DIR/channels/` is the source of truth, in the `channels/` file format
+  (`lineup.json`, `retired.json`, `<topic>/<id>.json`, plus uploaded
+  `screenshots/<id>.png|jpg` and `icons/<topic>.png|jpg`). On first start
+  with an empty `DIR`, `-import /channels` copies a `channels/` tree in
+  (`-import-screenshots` also copies the third-party captures, off by
+  default); `-import-manifest` takes the last file-based build's
+  `manifest.json` for overwrite continuity.
+- `POST /admin/v1/publish` runs `internal/newsseed` (the code behind
+  `cmd/newsseed`) into `DIR/builds/<n>/seed`, starting from the newest
+  build's `manifest.json`. It then signs every payload in-process (the
+  `sign-seed.sh` logic in Go) and verifies each container against the
+  committed console key. The result goes to `DIR/builds/<n>/signed`,
+  which it loads and swaps in atomically. Then it POSTs `{topic_id,
+  revision}` to nx-baas for every topic whose list changed. The last
+  `-keep-builds` (10) builds are kept for `POST /admin/v1/rollback`.
+- Until the first publish, the static `-dir` tree is served.
+- The image needs `cjpeg` (libjpeg-turbo), so `tools/news-cdn/Containerfile`
+  is now Alpine-based.
+
+| Variable | Meaning |
+| --- | --- |
+| `NEWS_ADMIN_KEY` | Required `X-Internal-Key` for the admin API. Unset = every admin request answers 503 |
+| `NEWS_SIGNING_KEY` | Path to the OpenPak BCAT RSA-2048 private key PEM (secret file). Must match `tools/news-patch/openpak-bcat-public.pem` |
+| `NEWS_AES_KEY` | Path to the raw News AES key (secret file) |
+| `NX_BAAS_PUSH_URL` | nx-baas push route, e.g. `http://openpak-nx-baas:20070/internal/news/push`. Unset = no push |
+| `NX_BAAS_INTERNAL_KEY` | nx-baas `X-Internal-Key` |
+| `NX_BAAS_PUSH_WAIT_RANGE` | Optional `wait_range` seconds sent with each push |
+
+Keys are read from their files at publish time and never logged or returned.
+The website needs `NEWS_ADMIN_URL=http://openpak-news-experiment:20043` and
+the same `NEWS_ADMIN_KEY`, and must be on the `openpak` network.
 
 ## LayeredFS placement contract (N2')
 
