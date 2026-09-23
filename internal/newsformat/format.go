@@ -341,6 +341,14 @@ type Article struct {
 	BodyImageHeight int64
 
 	More *More // optional link button under the article
+
+	// Optional record windows; zero values keep the defaults every seed
+	// has sent: priority Priority, pickup_limit = expire_at, no essential
+	// pickup window (pickup_limit 0) with priority_after = priority.
+	Priority               int64 // 0 = Priority
+	PickupLimit            int64 // UTC Unix seconds; 0 = ExpireAt
+	EssentialPickupLimit   int64 // UTC Unix seconds; 0 = none
+	EssentialPriorityAfter int64 // 0 = the record priority
 }
 
 // More is the article's link button. Type is "game", "shop" or "browser";
@@ -380,23 +388,37 @@ const Priority = 100
 const DeletionPriority = 100
 
 // Payload encodes the live article.
-func (a Article) Payload() Map { return a.payload(a.PublishedAt, a.ExpireAt) }
+func (a Article) Payload() Map {
+	pickup := a.PickupLimit
+	if pickup == 0 {
+		pickup = a.ExpireAt
+	}
+	return a.payload(a.PublishedAt, a.ExpireAt, pickup, a.EssentialPickupLimit)
+}
 
 // ExpiredPayload encodes the retirement variant: the same news_id with a
 // past validity window, used to replace a delivered article when it is
 // retired. Expiry cleanup is console-scheduled, not an immediate delete.
 func (a Article) ExpiredPayload() Map {
-	return a.payload(a.PublishedAt-86400, a.PublishedAt-1)
+	return a.payload(a.PublishedAt-86400, a.PublishedAt-1, a.PublishedAt-1, 0)
 }
 
-func (a Article) payload(published, expire int64) Map {
+func (a Article) payload(published, expire, pickup, essential int64) Map {
+	priority := a.Priority
+	if priority == 0 {
+		priority = Priority
+	}
+	after := a.EssentialPriorityAfter
+	if after == 0 {
+		after = priority
+	}
 	m := Map{
 		{"version", Map{{"format", int64(1)}, {"semantics", int64(1)}}},
 		{"news_id", a.NewsID},
 		{"published_at", published},
 		{"expire_at", expire},
-		{"pickup_limit", expire},
-		{"priority", int64(Priority)},
+		{"pickup_limit", pickup},
+		{"priority", priority},
 		{"deletion_priority", int64(DeletionPriority)},
 		{"language", a.Language},
 		{"supported_languages", stringsToAny(a.SupportedLanguages)},
@@ -407,7 +429,7 @@ func (a Article) payload(published, expire int64) Map {
 		// The record parser reads essential_pickup as a nested map; the
 		// flat essential_pickup_limit the seeds used to send was ignored.
 		// pickup_limit 0 = no essential-pickup window.
-		{"essential_pickup", Map{{"pickup_limit", int64(0)}, {"priority_after", int64(Priority)}}},
+		{"essential_pickup", Map{{"pickup_limit", essential}, {"priority_after", after}}},
 		{"movie", int64(0)},
 		{"subject", Map{{"caption", int64(1)}, {"text", a.Title}}},
 		{"topic_name", a.TopicName},

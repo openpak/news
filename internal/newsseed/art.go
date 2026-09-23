@@ -7,7 +7,7 @@
 // mark with gaming scenes. Everything is drawn here from deterministic
 // math; nothing is copied from games or third-party assets.
 
-package main
+package newsseed
 
 import (
 	"bytes"
@@ -17,10 +17,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 )
 
 type rgb = color.RGBA
@@ -963,19 +960,7 @@ func init() {
 // loadScreenshot returns an operator-captured gameplay image for an article,
 // from channels/screenshots/<news_id>.png|jpg|jpeg. Absent file = none.
 func loadScreenshot(sourceDir string, id int64) image.Image {
-	for _, ext := range []string{".png", ".jpg", ".jpeg"} {
-		p := filepath.Join(sourceDir, "screenshots", strconv.FormatInt(id, 10)+ext)
-		f, err := os.Open(p)
-		if err != nil {
-			continue
-		}
-		im, _, err := image.Decode(f)
-		f.Close()
-		if err == nil {
-			return im
-		}
-	}
-	return nil
+	return loadImage(ScreenshotPath(sourceDir, id))
 }
 
 // coverCrop center-crops an image to the target aspect, then box-filter
