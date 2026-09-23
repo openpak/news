@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+# Both runner services share one Docker daemon, and this test binds a fixed
+# host port for Postgres. Keep only the newest run so two revisions cannot
+# race for port 23001.
+concurrency:
+  group: news-ci
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: [self-hosted, linux, podman]
