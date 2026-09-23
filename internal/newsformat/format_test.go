@@ -85,11 +85,14 @@ func TestCatalogRecordOrder(t *testing.T) {
 		"publishing_time", "last_posted_at"}
 	assertOrder(t, ch.record(), want)
 
+	// No parser reads latest_news_urls; detail is the bare record unless
+	// the channel has a shop button.
+	assertOrder(t, Detail(ch), want)
+	ch.ShopQuery = "dst_nsuid=70010000000001"
 	detail := Detail(ch)
-	wantDetail := append(append([]string{}, want...), "latest_news_urls")
-	assertOrder(t, detail, wantDetail)
-	if len(detail[len(detail)-1].Value.([]any)) != 0 {
-		t.Fatal("latest_news_urls not empty")
+	assertOrder(t, detail, append(append([]string{}, want...), "shop_query"))
+	if detail[len(detail)-1].Value != ch.ShopQuery {
+		t.Fatal("shop_query value")
 	}
 
 	arch := Archives()
@@ -111,7 +114,7 @@ func TestArticlePayloadOrder(t *testing.T) {
 	want := []string{"version", "news_id", "published_at", "expire_at", "pickup_limit",
 		"priority", "deletion_priority", "language", "supported_languages",
 		"display_type", "topic_id", "no_photography", "surprise",
-		"essential_pickup_limit", "movie", "subject", "topic_name", "topic_image",
+		"essential_pickup", "movie", "subject", "topic_name", "topic_image",
 		"topic_publisher", "topic_description", "list_image", "footer", "body"}
 	assertOrder(t, p, want)
 	if got := p[1].Value.(int64); got != 123 {
@@ -121,6 +124,30 @@ func TestArticlePayloadOrder(t *testing.T) {
 	assertOrder(t, subject, []string{"caption", "text"})
 	body := p[22].Value.(Map)
 	assertOrder(t, body, []string{"text", "main_image_height", "main_image"})
+	// qlaunch lists 50 < priority < 1000 only.
+	if got := p[5].Value.(int64); got != 100 {
+		t.Fatalf("priority = %d, want 100", got)
+	}
+	ep := p[13].Value.(Map)
+	assertOrder(t, ep, []string{"pickup_limit", "priority_after"})
+	if ep[0].Value.(int64) != 0 || ep[1].Value.(int64) != 100 {
+		t.Fatal("essential_pickup values")
+	}
+
+	// more is appended only when set, with only the fields the author set.
+	a.More = &More{Type: "game", ApplicationIDs: []uint64{0x0100abcd12340000}}
+	p = a.Payload()
+	assertOrder(t, p, append(append([]string{}, want...), "more"))
+	more := p[len(p)-1].Value.(Map)
+	assertOrder(t, more, []string{"type", "application_ids"})
+	if more[1].Value.([]any)[0].(int64) != 0x0100abcd12340000 {
+		t.Fatal("application id")
+	}
+	a.More = &More{Type: "browser", URL: "https://openpak.example/x"}
+	assertOrder(t, a.Payload()[len(want)].Value.(Map), []string{"type", "url"})
+	a.More = &More{Type: "shop", Query: "dst_nsuid=1"}
+	assertOrder(t, a.Payload()[len(want)].Value.(Map), []string{"type", "query"})
+	a.More = nil
 
 	// Expired variant keeps identity and shrinks the window.
 	e := a.ExpiredPayload()
@@ -155,6 +182,57 @@ func TestEncodeDeterminism(t *testing.T) {
 	}
 	if !bytes.Equal(mustEncode(t, a.Payload()), mustEncode(t, a.Payload())) {
 		t.Fatal("article encoding not deterministic")
+	}
+}
+
+func TestListShape(t *testing.T) {
+	e := ListEntry{NewsID: 7, PublishingTime: 1000, DeletionPriority: 100, DefaultLanguage: "en-GB",
+		Languages: []ListLanguage{{Language: "en-GB", DataID: 42, URL: "https://h/x", Size: 400, Overwrite: true}}}
+	l := List("openpak_news", InService, false, e)
+	assertOrder(t, l, []string{"topic_id", "service_status", "na_required", "directories"})
+	if l[1].Value != "in_service" || l[2].Value != false {
+		t.Fatal("list header values")
+	}
+	dirs := l[3].Value.([]any)
+	if len(dirs) != 1 {
+		t.Fatal("want exactly one directory")
+	}
+	dir := dirs[0].(Map)
+	assertOrder(t, dir, []string{"data_list"})
+	entry := dir[0].Value.([]any)[0].(Map)
+	assertOrder(t, entry, []string{"version", "news_id", "publishing_time",
+		"deletion_priority", "default_language", "languages"})
+	assertOrder(t, entry[0].Value.(Map), []string{"format", "semantics"})
+	lang := entry[5].Value.([]any)[0].(Map)
+	assertOrder(t, lang, []string{"language", "data_id", "url", "size", "overwrite"})
+	if lang[4].Value != true || lang[3].Value.(int64) != 400 {
+		t.Fatal("language values")
+	}
+
+	x := List("openpak_old", Expired, true)
+	assertOrder(t, x, []string{"topic_id", "service_status", "na_required", "test_distribution", "directories"})
+	if x[1].Value != "expired" || len(x[4].Value.([]any)[0].(Map)[0].Value.([]any)) != 0 {
+		t.Fatal("expired list")
+	}
+	// Byte-level check of the header so an encoder change cannot reorder it.
+	b := mustEncode(t, List("t", InService, false))
+	want := []byte{0x84, 0xa8, 't', 'o', 'p', 'i', 'c', '_', 'i', 'd', 0xa1, 't'}
+	if !bytes.HasPrefix(b, want) {
+		t.Fatalf("list prefix % x", b[:len(want)])
+	}
+}
+
+func TestTitleTopics(t *testing.T) {
+	got, err := TitleTopics([]string{"openpak_games"})
+	if err != nil || !bytes.Equal(mustEncode(t, got), append([]byte{0x91, 0xad}, "openpak_games"...)) {
+		t.Fatalf("title topics = % x, %v", mustEncode(t, got), err)
+	}
+	empty, err := TitleTopics(nil)
+	if err != nil || !bytes.Equal(mustEncode(t, empty), []byte{0x90}) {
+		t.Fatal("empty title topics must be an empty array")
+	}
+	if _, err := TitleTopics(make([]string, 65)); err == nil {
+		t.Fatal("65 topics accepted")
 	}
 }
 

@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/openpak/news/internal/bcatcontainer"
+	"github.com/openpak/news/internal/newsformat"
 )
 
 const pinned = "2026-09-10T08:00:00Z"
@@ -437,5 +441,216 @@ func TestRetiredEntryNeedsReason(t *testing.T) {
 	when, _ := time.Parse(time.RFC3339, pinned)
 	if err := build(source, t.TempDir(), when, l, r, false); err == nil {
 		t.Fatal("retired entry without reason accepted")
+	}
+}
+
+// listLanguage returns the single language edition of the list entry for id.
+func listLanguage(t *testing.T, list newsformat.Map, id int64) newsformat.Map {
+	t.Helper()
+	dir := get(list, "directories").([]any)[0].(newsformat.Map)
+	for _, e := range get(dir, "data_list").([]any) {
+		entry := e.(newsformat.Map)
+		if get(entry, "news_id").(int64) == id {
+			return get(entry, "languages").([]any)[0].(newsformat.Map)
+		}
+	}
+	t.Fatalf("news_id %d not in list", id)
+	return nil
+}
+
+func TestListShape(t *testing.T) {
+	source := writeSource(t)
+	out := filepath.Join(t.TempDir(), "build")
+	buildDir(t, source, out)
+	list := decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	if got := strings.Join(keys(list), ","); got != "topic_id,service_status,na_required,directories" {
+		t.Fatalf("list keys = %s", got)
+	}
+	if get(list, "topic_id") != "openpak_test" || get(list, "service_status") != "in_service" || get(list, "na_required") != false {
+		t.Fatal("list header values")
+	}
+	dirs := get(list, "directories").([]any)
+	if len(dirs) != 1 || strings.Join(keys(dirs[0].(newsformat.Map)), ",") != "data_list" {
+		t.Fatal("want one directory holding data_list only")
+	}
+	data := get(dirs[0].(newsformat.Map), "data_list").([]any)
+	if len(data) != 2 || get(data[0].(newsformat.Map), "news_id").(int64) != 2609100002 {
+		t.Fatal("list must hold both articles, newest first")
+	}
+	entry := data[1].(newsformat.Map)
+	if got := strings.Join(keys(entry), ","); got != "version,news_id,publishing_time,deletion_priority,default_language,languages" {
+		t.Fatalf("entry keys = %s", got)
+	}
+	when, _ := time.Parse(time.RFC3339, pinned)
+	if get(entry, "publishing_time").(int64) != when.Unix() || get(entry, "deletion_priority").(int64) != 100 ||
+		get(entry, "default_language") != "en-GB" {
+		t.Fatal("entry values")
+	}
+	lang := listLanguage(t, list, 2609100001)
+	if got := strings.Join(keys(lang), ","); got != "language,data_id,url,size,overwrite" {
+		t.Fatalf("language keys = %s", got)
+	}
+	article, err := os.ReadFile(filepath.Join(out, "openpak_test", "2609100001", "article.msgpack"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := get(lang, "url").(string)
+	if url != "https://bcat-topics-lp1.cdn.nintendo.net/openpak/v1/topics/openpak_test/news/2609100001/article" || len(url) > 256 {
+		t.Fatalf("url = %s", url)
+	}
+	// size is the signed container: fixed header + payload.
+	if get(lang, "size").(int64) != int64(bcatcontainer.HeaderSize+len(article)) {
+		t.Fatal("size is not the container size")
+	}
+	if get(lang, "overwrite") != false || get(lang, "data_id").(int64) <= 0 {
+		t.Fatal("fresh article must not overwrite and needs a data_id")
+	}
+	// The record itself sits in qlaunch's visible priority band.
+	record := decodeFile(t, filepath.Join(out, "openpak_test", "2609100001", "article.msgpack")).(newsformat.Map)
+	if p := get(record, "priority").(int64); p <= 50 || p >= 1000 {
+		t.Fatalf("priority %d outside the main list band", p)
+	}
+	if get(record, "essential_pickup_limit") != nil || get(record, "essential_pickup") == nil {
+		t.Fatal("essential_pickup must be nested")
+	}
+	detail := decodeFile(t, filepath.Join(out, "openpak_test", "detail.msgpack")).(newsformat.Map)
+	if get(detail, "latest_news_urls") != nil || get(detail, "shop_query") != nil {
+		t.Fatal("detail carries unused or unset keys")
+	}
+	// No title mapped: only the empty auto-subscription answer.
+	if v := decodeFile(t, filepath.Join(out, "titles", "none.msgpack")).([]any); len(v) != 0 {
+		t.Fatal("titles/none must be an empty array")
+	}
+}
+
+func TestListOverwrite(t *testing.T) {
+	source := writeSource(t)
+	out := filepath.Join(t.TempDir(), "build")
+	buildDir(t, source, out)
+	first := decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	id1 := get(listLanguage(t, first, 2609100001), "data_id").(int64)
+
+	// A rebuild at a new publication time is not a content change.
+	l, _ := loadLineup(source)
+	r, _ := loadRetired(filepath.Join(source, "retired.json"))
+	later, _ := time.Parse(time.RFC3339, "2026-09-20T08:00:00Z")
+	if err := build(source, out, later, l, r, false); err != nil {
+		t.Fatal(err)
+	}
+	list := decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	if get(listLanguage(t, list, 2609100001), "overwrite") != false {
+		t.Fatal("republishing unchanged content set overwrite")
+	}
+	if get(listLanguage(t, list, 2609100001), "data_id").(int64) != id1 {
+		t.Fatal("data_id changed without a content change")
+	}
+
+	// Editing the body replaces the article on consoles that have it.
+	path := filepath.Join(source, "openpak_test", "2609100001.json")
+	raw, _ := os.ReadFile(path)
+	if err := os.WriteFile(path, bytes.Replace(raw, []byte("Body one."), []byte("Body one, corrected."), 1), 0644); err != nil {
+		t.Fatal(err)
+	}
+	buildDir(t, source, out)
+	list = decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	lang := listLanguage(t, list, 2609100001)
+	if get(lang, "overwrite") != true || get(lang, "data_id").(int64) == id1 {
+		t.Fatal("changed content must overwrite with a new data_id")
+	}
+	if get(listLanguage(t, list, 2609100002), "overwrite") != false {
+		t.Fatal("untouched article overwrite")
+	}
+	// Sticky: a later rebuild keeps the flag for consoles that missed it.
+	buildDir(t, source, out)
+	list = decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	if get(listLanguage(t, list, 2609100001), "overwrite") != true {
+		t.Fatal("overwrite not sticky")
+	}
+
+	// Retiring lists the expired replacement with overwrite.
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(
+		`{"retired":[{"topic_id":"openpak_test","news_id":2609100002,"reason":"test"}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	buildDir(t, source, out)
+	list = decodeFile(t, filepath.Join(out, "openpak_test", "list.msgpack")).(newsformat.Map)
+	lang = listLanguage(t, list, 2609100002)
+	expired, err := os.ReadFile(filepath.Join(out, "retired", "openpak_test", "2609100002", "article.msgpack"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if get(lang, "overwrite") != true || !strings.HasSuffix(get(lang, "url").(string), "/news/2609100002/expired") ||
+		get(lang, "size").(int64) != int64(bcatcontainer.HeaderSize+len(expired)) {
+		t.Fatalf("retired entry: %+v", lang)
+	}
+}
+
+func TestExpiredChannelList(t *testing.T) {
+	source := writeSource(t)
+	out := filepath.Join(t.TempDir(), "build")
+	snap := `"topic": {"topic_id": "openpak_test", "name": "OpenPak Test", "publisher": "OpenPak",
+		"description": "Test channel.", "icon": {"motif": "mark"}}`
+	if err := os.WriteFile(filepath.Join(source, "retired.json"), []byte(`{"retired": [
+		{"topic_id": "openpak_test", "news_id": 2609100001, "reason": "removed", `+snap+`},
+		{"topic_id": "openpak_test", "news_id": 2609100002, "reason": "removed", `+snap+`}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "lineup.json"), []byte(`{"channels": []}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	buildDir(t, source, out)
+	list := decodeFile(t, filepath.Join(out, "retired", "openpak_test", "list.msgpack")).(newsformat.Map)
+	if get(list, "service_status") != "expired" || get(list, "topic_id") != "openpak_test" {
+		t.Fatalf("removed channel list: %+v", list)
+	}
+	if _, err := os.Stat(filepath.Join(out, "openpak_test")); !os.IsNotExist(err) {
+		t.Fatal("removed channel still has live outputs")
+	}
+}
+
+func TestTitlesAndLinks(t *testing.T) {
+	source := writeSource(t)
+	if err := os.WriteFile(filepath.Join(source, "lineup.json"), []byte(`{"channels": [{
+		"topic_id": "openpak_test", "name": "OpenPak Test", "publisher": "OpenPak",
+		"description": "Test channel.", "icon": {"motif": "mark"},
+		"shop_query": "dst_nsuid=70010000000001",
+		"application_ids": ["0100abcd12340000", "0100abcd12340000"]}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(source, "openpak_test", "2609100001.json")
+	raw, _ := os.ReadFile(path)
+	withMore := bytes.Replace(raw, []byte(`"lifetime_days"`),
+		[]byte(`"more": {"type": "game", "application_ids": ["0100abcd12340000"]}, "lifetime_days"`), 1)
+	if err := os.WriteFile(path, withMore, 0644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "build")
+	buildDir(t, source, out)
+	topics := decodeFile(t, filepath.Join(out, "titles", "0100abcd12340000.msgpack")).([]any)
+	if len(topics) != 1 || topics[0] != "openpak_test" {
+		t.Fatalf("title topics = %v", topics)
+	}
+	detail := decodeFile(t, filepath.Join(out, "openpak_test", "detail.msgpack")).(newsformat.Map)
+	if get(detail, "shop_query") != "dst_nsuid=70010000000001" {
+		t.Fatal("shop_query missing from detail")
+	}
+	record := decodeFile(t, filepath.Join(out, "openpak_test", "2609100001", "article.msgpack")).(newsformat.Map)
+	more, _ := get(record, "more").(newsformat.Map)
+	if strings.Join(keys(more), ",") != "type,application_ids" || get(more, "application_ids").([]any)[0].(int64) != 0x0100abcd12340000 {
+		t.Fatalf("more = %+v", more)
+	}
+
+	for name, bad := range map[string]string{
+		"type":    `"more": {"type": "system_applet"},`,
+		"game":    `"more": {"type": "game"},`,
+		"browser": `"more": {"type": "browser", "url": "http://x"},`,
+		"id":      `"more": {"type": "game", "application_ids": ["0100ABCD12340000"]},`,
+	} {
+		if err := os.WriteFile(path, bytes.Replace(raw, []byte(`"lifetime_days"`), []byte(bad+`"lifetime_days"`), 1), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadArticle(path); err == nil {
+			t.Fatalf("bad more (%s) accepted", name)
+		}
 	}
 }

@@ -11,10 +11,15 @@
 #   unless -f is given (updates remove it first).
 # - The signing key and AES key stay on the operator's machine; never
 #   commit, copy or print them. The CDN image receives containers only.
-# - The retired/ tree and manifest.json are not signed: retired fixtures
-#   are prepared cleanup artifacts, not CDN routes.
-# - Each article's decoded payload is also copied verbatim as
+# - Every *.msgpack and icon.jpg is signed, including <topic>/list.msgpack,
+#   titles/*.msgpack and the retired/ tree (expired lists of removed
+#   channels, expired replacements of retired articles): all are CDN
+#   routes now. manifest.json is not signed.
+# - Each live article's decoded payload is also copied verbatim as
 #   <topic>/<news_id>/local.msgpack for the homebrew sync helper.
+# - Each list entry states its article's exact container size, computed by
+#   newsseed as 288 + payload bytes; every container is checked against
+#   that rule, so a format change cannot silently break the lists.
 #
 # Every produced container is verified against the public OpenPak key
 # (tools/news-patch/openpak-bcat-public.pem) before the script reports
@@ -79,7 +84,6 @@ fail=0
 while IFS= read -r src; do
   rel="${src#"$in_dir"/}"
   case "$rel" in
-    retired/*) continue ;;
     manifest.json) continue ;;
   esac
   dst="$out_dir/${rel%.msgpack}.bcat"
@@ -99,12 +103,15 @@ while IFS= read -r src; do
   openssl enc -d -aes-256-ctr -K "$keyhex" -iv "$ivhex" -in "$payload" -out "$payload.dec" -nopad
   sig="$tmp/sig.bin"
   dd if="$dst" of="$sig" bs=1 skip=32 count=256 status=none
-  if openssl dgst -sha256 -verify "$pub" -signature "$sig" "$payload.dec" > /dev/null 2>&1; then
+  if [[ $(stat -c%s "$dst") -ne $(( $(stat -c%s "$src") + 288 )) ]]; then
+    echo "  SIZE MISMATCH    $rel (lists advertise 288 + payload bytes)" >&2
+    fail=1
+  elif openssl dgst -sha256 -verify "$pub" -signature "$sig" "$payload.dec" > /dev/null 2>&1; then
     echo "  signed+verified  $rel"
     # The homebrew sync helper posts the plaintext payload through
     # newsPostLocalNews, which takes MessagePack directly: no container,
     # no key. Copy it beside the signed pair for the local route.
-    if [[ "$rel" == */article.msgpack ]]; then
+    if [[ "$rel" == */article.msgpack && "$rel" != retired/* ]]; then
       cp "$src" "$out_dir/${rel%/article.msgpack}/local.msgpack"
       echo "  local payload    ${rel%/article.msgpack}/local.msgpack"
     fi

@@ -13,6 +13,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openpak/news/internal/bcatcontainer"
 	"github.com/openpak/news/internal/newsformat"
 )
 
@@ -32,7 +34,15 @@ var (
 	reTopicID   = regexp.MustCompile(`^[a-z][a-z0-9_]{2,63}$`)
 	reLocale    = regexp.MustCompile(`^[a-z]{2}-[A-Z]{2}$`)
 	reNewsIDDir = regexp.MustCompile(`^[0-9]+$`)
+	reTitleID   = regexp.MustCompile(`^[0-9a-f]{16}$`)
 )
+
+// reservedDirs are output directory names that are not topics: a channel
+// may not take them as its topic_id.
+var reservedDirs = map[string]bool{"retired": true, "titles": true}
+
+// maxListURL is the list parser's url buffer (256 bytes).
+const maxListURL = 256
 
 type artSpec struct {
 	Motif string `json:"motif"`
@@ -46,6 +56,15 @@ type channelSource struct {
 	Description string  `json:"description"`
 	Important   bool    `json:"important"`
 	Icon        artSpec `json:"icon"`
+	// ShopQuery is the channel page's eShop button query (detail
+	// shop_query), passed to the shop applet verbatim. Optional.
+	ShopQuery string `json:"shop_query,omitempty"`
+	// ApplicationIDs are the titles (16 lowercase hex digits) whose launch
+	// auto-subscribes the console to this channel. Optional.
+	ApplicationIDs []string `json:"application_ids,omitempty"`
+	// TestDistribution sets the list's test_distribution flag, under which
+	// the module ignores its received-id history. Test channels only.
+	TestDistribution bool `json:"test_distribution,omitempty"`
 }
 
 type lineupSource struct {
@@ -53,14 +72,72 @@ type lineupSource struct {
 }
 
 type articleSource struct {
-	NewsID             int64    `json:"news_id"`
-	Title              string   `json:"title"`
-	Body               string   `json:"body"`
-	Footer             string   `json:"footer"`
-	Language           string   `json:"language"`
-	SupportedLanguages []string `json:"supported_languages"`
-	LifetimeDays       int      `json:"lifetime_days"`
-	Art                artSpec  `json:"art"`
+	NewsID             int64     `json:"news_id"`
+	Title              string    `json:"title"`
+	Body               string    `json:"body"`
+	Footer             string    `json:"footer"`
+	Language           string    `json:"language"`
+	SupportedLanguages []string  `json:"supported_languages"`
+	LifetimeDays       int       `json:"lifetime_days"`
+	Art                artSpec   `json:"art"`
+	More               *moreSpec `json:"more,omitempty"`
+}
+
+// moreSpec is the article's optional link button: "game" opens a title
+// (application_ids), "shop" opens the eShop with a raw query, "browser"
+// opens an https page.
+type moreSpec struct {
+	Type           string   `json:"type"`
+	ApplicationIDs []string `json:"application_ids,omitempty"`
+	Query          string   `json:"query,omitempty"`
+	URL            string   `json:"url,omitempty"`
+}
+
+func (m *moreSpec) check() error {
+	if m == nil {
+		return nil
+	}
+	ids, err := parseTitleIDs(m.ApplicationIDs)
+	if err != nil {
+		return err
+	}
+	switch m.Type {
+	case "game":
+		if len(ids) == 0 || len(ids) > 5 {
+			return fmt.Errorf("game link needs 1..5 application_ids")
+		}
+	case "shop":
+		if strings.TrimSpace(m.Query) == "" && len(ids) == 0 {
+			return fmt.Errorf("shop link needs a query or application_ids")
+		}
+	case "browser":
+		if !strings.HasPrefix(m.URL, "https://") || len(m.URL) > maxListURL {
+			return fmt.Errorf("browser link needs an https url of at most %d bytes", maxListURL)
+		}
+	default:
+		return fmt.Errorf("more.type must be game, shop or browser (got %q)", m.Type)
+	}
+	return nil
+}
+
+func (m *moreSpec) format() *newsformat.More {
+	if m == nil {
+		return nil
+	}
+	ids, _ := parseTitleIDs(m.ApplicationIDs) // checked at load
+	return &newsformat.More{Type: m.Type, ApplicationIDs: ids, Query: m.Query, URL: m.URL}
+}
+
+func parseTitleIDs(in []string) ([]uint64, error) {
+	var out []uint64
+	for _, id := range in {
+		if !reTitleID.MatchString(id) {
+			return nil, fmt.Errorf("application id %q must be 16 lowercase hex digits", id)
+		}
+		v, _ := strconv.ParseUint(id, 16, 64)
+		out = append(out, v)
+	}
+	return out, nil
 }
 
 type retiredEntry struct {
@@ -119,6 +196,8 @@ func loadLineup(dir string) (*lineupSource, error) {
 		switch {
 		case !reTopicID.MatchString(ch.TopicID):
 			return nil, fmt.Errorf("channel %d: topic_id %q must match %s", i, ch.TopicID, reTopicID)
+		case reservedDirs[ch.TopicID]:
+			return nil, fmt.Errorf("channel %d: topic_id %q is a reserved output name", i, ch.TopicID)
 		case seen[ch.TopicID]:
 			return nil, fmt.Errorf("duplicate topic_id %q", ch.TopicID)
 		case strings.TrimSpace(ch.Name) == "" || strings.TrimSpace(ch.Publisher) == "":
@@ -128,6 +207,9 @@ func loadLineup(dir string) (*lineupSource, error) {
 		}
 		if err := checkIconArt(ch.Icon); err != nil {
 			return nil, fmt.Errorf("channel %s icon: %w", ch.TopicID, err)
+		}
+		if _, err := parseTitleIDs(ch.ApplicationIDs); err != nil {
+			return nil, fmt.Errorf("channel %s: %w", ch.TopicID, err)
 		}
 		seen[ch.TopicID] = true
 	}
@@ -179,6 +261,9 @@ func loadArticle(path string) (*articleSource, error) {
 	}
 	if err := checkSceneArt(a.Art); err != nil {
 		return nil, fmt.Errorf("%s: art: %w", path, err)
+	}
+	if err := a.More.check(); err != nil {
+		return nil, fmt.Errorf("%s: more: %w", path, err)
 	}
 	return &a, nil
 }
@@ -248,15 +333,23 @@ type fileInfo struct {
 }
 
 type articleEntry struct {
-	NewsID      int64               `json:"news_id"`
-	Title       string              `json:"title"`
-	State       string              `json:"state"`
-	PublishedAt int64               `json:"published_at"`
-	ExpireAt    int64               `json:"expire_at"`
-	Art         string              `json:"art"`
-	Image       string              `json:"image,omitempty"` // "screenshot" or "generated"
-	Reason      string              `json:"reason,omitempty"`
-	Files       map[string]fileInfo `json:"files"`
+	NewsID      int64  `json:"news_id"`
+	Title       string `json:"title"`
+	State       string `json:"state"`
+	PublishedAt int64  `json:"published_at"`
+	ExpireAt    int64  `json:"expire_at"`
+	Art         string `json:"art"`
+	Image       string `json:"image,omitempty"` // "screenshot" or "generated"
+	Reason      string `json:"reason,omitempty"`
+	// ContentSHA256 hashes the live payload with timestamps zeroed, so a
+	// rebuild at a new --published does not count as a content change.
+	ContentSHA256 string `json:"content_sha256,omitempty"`
+	// Overwrite is the list entry's overwrite flag. The console skips a
+	// news_id it has already received unless overwrite is set, so once an
+	// article's content changes (or it is retired or unretired) the flag
+	// stays set: a console that missed one list revision still takes it.
+	Overwrite bool                `json:"overwrite,omitempty"`
+	Files     map[string]fileInfo `json:"files"`
 }
 
 type channelEntry struct {
@@ -276,6 +369,9 @@ type manifest struct {
 	Catalog     fileInfo         `json:"catalog"`
 	Channels    []channelEntry   `json:"channels"`
 	Removed     []removedChannel `json:"removed_channels"`
+	// Titles maps a title id to the topics its launch subscribes to
+	// (titles/<tid>.msgpack); titles/none.msgpack answers every other id.
+	Titles map[string][]string `json:"titles,omitempty"`
 }
 
 // removedChannel records retirement fixtures for a channel that is no
@@ -283,6 +379,7 @@ type manifest struct {
 // each retired.json entry, so identities stay serviceable after removal.
 type removedChannel struct {
 	TopicID  string         `json:"topic_id"`
+	List     *fileInfo      `json:"list,omitempty"`
 	Articles []articleEntry `json:"articles"`
 }
 
@@ -316,7 +413,7 @@ func adoptSweep(out string) error {
 		}
 		return nil
 	}
-	if err := sweep("retired", "catalog.msgpack", "manifest.json", markerName); err != nil {
+	if err := sweep("retired", "titles", "catalog.msgpack", "manifest.json", markerName); err != nil {
 		return err
 	}
 	entries, err := os.ReadDir(out)
@@ -337,7 +434,7 @@ func adoptSweep(out string) error {
 				if err := sweep(filepath.Join(e.Name(), a.Name())); err != nil {
 					return err
 				}
-			case !a.IsDir() && (a.Name() == "detail.msgpack" || a.Name() == "icon.jpg" || a.Name() == "archives.msgpack"):
+			case !a.IsDir() && (a.Name() == "detail.msgpack" || a.Name() == "icon.jpg" || a.Name() == "archives.msgpack" || a.Name() == "list.msgpack"):
 				if err := sweep(filepath.Join(e.Name(), a.Name())); err != nil {
 					return err
 				}
@@ -377,7 +474,7 @@ func pruneStale(out string, l *lineupSource, active map[string]map[int64]bool) e
 		known[ch.TopicID] = true
 	}
 	// Removal targets, as paths relative to out.
-	targets := map[string]bool{"retired": true}
+	targets := map[string]bool{"retired": true, "titles": true}
 	if prev := prevManifest(out); prev != nil {
 		for _, ch := range prev.Channels {
 			if !known[ch.TopicID] {
@@ -570,6 +667,18 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 		return err
 	}
 
+	// The previous build's record of each article drives the list's
+	// overwrite flag (read before this build replaces manifest.json).
+	prevArticles := map[string]map[int64]articleEntry{}
+	if prev := prevManifest(out); prev != nil {
+		for _, ch := range prev.Channels {
+			prevArticles[ch.TopicID] = map[int64]articleEntry{}
+			for _, ae := range ch.Articles {
+				prevArticles[ch.TopicID][ae.NewsID] = ae
+			}
+		}
+	}
+
 	man := manifest{
 		Format:      1,
 		GeneratedAt: published.UTC().Format(time.RFC3339),
@@ -611,7 +720,7 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 		nfChannel := newsformat.Channel{
 			TopicID: ch.TopicID, Name: ch.Name, Publisher: ch.Publisher,
 			Description: ch.Description, Important: ch.Important,
-			PublishingTime: pubAt, LastPostedAt: lastAt,
+			PublishingTime: pubAt, LastPostedAt: lastAt, ShopQuery: ch.ShopQuery,
 		}
 		catalogChannels = append(catalogChannels, nfChannel)
 
@@ -636,6 +745,7 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 			entry.Files["archives"] = fi
 		}
 
+		var listEntries []newsformat.ListEntry
 		for _, s := range slots {
 			if s.topic != ch.TopicID {
 				continue
@@ -668,34 +778,56 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 				TopicDescription: ch.Description, TopicImage: icon,
 				Title: a.Title, ListImage: card, Footer: a.footer(),
 				BodyText: a.Body, BodyImage: hero, BodyImageHeight: 364,
+				More: a.More.format(),
 			}
+			lifetime := int64(a.LifetimeDays) * 86400
+			live := contentHash(payload, lifetime, false)
 			ae := articleEntry{
 				NewsID: a.NewsID, Title: a.Title,
 				PublishedAt: payload.PublishedAt, ExpireAt: payload.ExpireAt,
 				Art: a.Art.Motif, Image: imageSource, Files: map[string]fileInfo{},
+				ContentSHA256: hex.EncodeToString(live[:]),
 			}
 			dir := filepath.Join(ch.TopicID, strconv.FormatInt(a.NewsID, 10))
 			if s.retired != nil {
 				ae.State = "retired"
 				ae.Reason = s.retired.Reason
-				// Retired articles leave the catalog flow; only their
-				// expired replacement is produced, for scoped cleanup.
-				if fi, err := writeFile(out, filepath.Join("retired", dir, "article.msgpack"),
-					mustEncode(payload.ExpiredPayload())); err != nil {
+				// Retired articles leave the catalog flow; their expired
+				// replacement is listed with overwrite so a console that
+				// holds the live copy replaces it (then purges it as
+				// expired).
+				ae.Overwrite = true
+				expired := payload.ExpiredPayload()
+				body := mustEncode(expired)
+				if fi, err := writeFile(out, filepath.Join("retired", dir, "article.msgpack"), body); err != nil {
 					return err
 				} else {
 					ae.Files["article-expired"] = fi
 				}
+				le, err := listEntry(expired, articleURL(ch.TopicID, a.NewsID, "expired"), body,
+					contentHash(payload, lifetime, true), true)
+				if err != nil {
+					return err
+				}
+				listEntries = append(listEntries, le)
 			} else {
 				ae.State = "active"
+				prev, seen := prevArticles[ch.TopicID][a.NewsID]
+				ae.Overwrite = seen && (prev.Overwrite || prev.State == "retired" ||
+					(prev.ContentSHA256 != "" && prev.ContentSHA256 != ae.ContentSHA256))
+				body := mustEncode(payload.Payload())
+				le, err := listEntry(payload.Payload(), articleURL(ch.TopicID, a.NewsID, "article"), body, live, ae.Overwrite)
+				if err != nil {
+					return err
+				}
+				listEntries = append(listEntries, le)
 				if fi, err := writeFile(out, filepath.Join(dir, "summary.msgpack"),
 					mustEncode(payload.Summary(articleURL(ch.TopicID, a.NewsID, "article")))); err != nil {
 					return err
 				} else {
 					ae.Files["summary"] = fi
 				}
-				if fi, err := writeFile(out, filepath.Join(dir, "article.msgpack"),
-					mustEncode(payload.Payload())); err != nil {
+				if fi, err := writeFile(out, filepath.Join(dir, "article.msgpack"), body); err != nil {
 					return err
 				} else {
 					ae.Files["article"] = fi
@@ -722,7 +854,42 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 		sort.Slice(entry.Articles, func(i, j int) bool {
 			return entry.Articles[i].NewsID < entry.Articles[j].NewsID
 		})
+		// The list is what the News module itself fetches for a
+		// subscribed topic; newest first, like the archives.
+		sort.Slice(listEntries, func(i, j int) bool { return listEntries[i].NewsID > listEntries[j].NewsID })
+		if fi, err := writeFile(out, filepath.Join(ch.TopicID, "list.msgpack"),
+			mustEncode(newsformat.List(ch.TopicID, newsformat.InService, ch.TestDistribution, listEntries...))); err != nil {
+			return err
+		} else {
+			entry.Files["list"] = fi
+		}
 		man.Channels = append(man.Channels, entry)
+	}
+
+	// Auto-subscription: titles/<tid>.msgpack per mapped title, and one
+	// empty answer for every other title.
+	titles := map[string][]string{}
+	for _, ch := range l.Channels {
+		for _, id := range ch.ApplicationIDs {
+			if n := len(titles[id]); n == 0 || titles[id][n-1] != ch.TopicID {
+				titles[id] = append(titles[id], ch.TopicID)
+			}
+		}
+	}
+	for id, topics := range titles {
+		v, err := newsformat.TitleTopics(topics)
+		if err != nil {
+			return fmt.Errorf("title %s: %w", id, err)
+		}
+		if _, err := writeFile(out, filepath.Join("titles", id+".msgpack"), mustEncode(v)); err != nil {
+			return err
+		}
+	}
+	if _, err := writeFile(out, filepath.Join("titles", "none.msgpack"), mustEncode([]any{})); err != nil {
+		return err
+	}
+	if len(titles) > 0 {
+		man.Titles = titles
 	}
 
 	// Retirement fixtures for channels no longer in the lineup: their
@@ -760,6 +927,7 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 			TopicDescription: snap.Description, TopicImage: icon,
 			Title: a.Title, ListImage: card, Footer: a.footer(),
 			BodyText: a.Body, BodyImage: hero, BodyImageHeight: 364,
+			More: a.More.format(),
 		}
 		fi, err := writeFile(out, filepath.Join("retired", e.TopicID,
 			strconv.FormatInt(a.NewsID, 10), "article.msgpack"),
@@ -791,6 +959,18 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 		}
 	}
 
+	// A removed channel keeps answering its list, as expired: that is what
+	// retires the topic on a console still subscribed to it.
+	for i := range man.Removed {
+		topic := man.Removed[i].TopicID
+		fi, err := writeFile(out, filepath.Join("retired", topic, "list.msgpack"),
+			mustEncode(newsformat.List(topic, newsformat.Expired, false)))
+		if err != nil {
+			return err
+		}
+		man.Removed[i].List = &fi
+	}
+
 	if fi, err := writeFile(out, "catalog.msgpack", mustEncode(newsformat.Catalog(catalogChannels))); err != nil {
 		return err
 	} else {
@@ -806,6 +986,46 @@ func build(sourceDir, out string, published time.Time, l *lineupSource, r *retir
 
 func (a *articleSource) stamp(published time.Time) int64 {
 	return published.UTC().Unix()
+}
+
+// contentHash identifies an article's content independent of the build's
+// publication time.
+func contentHash(p newsformat.Article, lifetime int64, expired bool) [32]byte {
+	p.PublishedAt, p.ExpireAt = 0, lifetime
+	if expired {
+		return sha256.Sum256(mustEncode(p.ExpiredPayload()))
+	}
+	return sha256.Sum256(mustEncode(p.Payload()))
+}
+
+// listEntry builds the article's bcat-list entry. The module downloads url
+// and expects exactly size bytes: the signed container, which is the
+// payload plus the fixed container header (internal/bcatcontainer).
+// data_id is derived from the content, so it changes when the content does.
+func listEntry(record newsformat.Map, url string, body []byte, content [32]byte, overwrite bool) (newsformat.ListEntry, error) {
+	var id, published int64
+	var lang string
+	for _, f := range record {
+		switch f.Key {
+		case "news_id":
+			id = f.Value.(int64)
+		case "published_at":
+			published = f.Value.(int64)
+		case "language":
+			lang = f.Value.(string)
+		}
+	}
+	if !strings.HasPrefix(url, "https://") || len(url) > maxListURL {
+		return newsformat.ListEntry{}, fmt.Errorf("article %d: list url must be https and at most %d bytes: %s", id, maxListURL, url)
+	}
+	return newsformat.ListEntry{
+		NewsID: id, PublishingTime: published,
+		DeletionPriority: newsformat.DeletionPriority, DefaultLanguage: lang,
+		Languages: []newsformat.ListLanguage{{
+			Language: lang, DataID: int64(binary.BigEndian.Uint64(content[:8]) >> 1),
+			URL: url, Size: int64(bcatcontainer.HeaderSize + len(body)), Overwrite: overwrite,
+		}},
+	}, nil
 }
 
 func articleURL(topic string, id int64, resource string) string {

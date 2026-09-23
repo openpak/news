@@ -158,6 +158,10 @@ type Channel struct {
 	Important      bool
 	PublishingTime int64 // UTC Unix seconds
 	LastPostedAt   int64 // UTC Unix seconds
+	// ShopQuery is the raw eShop query behind the channel page's shop
+	// button (qlaunch passes it to the shop applet unchanged). Detail only;
+	// omitted when empty.
+	ShopQuery string
 }
 
 func (ch Channel) record() Map {
@@ -181,11 +185,15 @@ func Catalog(channels []Channel) []any {
 	return out
 }
 
-// Detail encodes one channel's detail record. latest_news_urls stays empty:
-// its entry format has not been traced from the console's parser, and the
-// payload must not invent URL fields.
+// Detail encodes one channel's detail record: the catalog record plus the
+// optional shop_query. latest_news_urls is not emitted: no 22.5.0 parser
+// reads it (the earlier seeds sent it empty).
 func Detail(ch Channel) Map {
-	return append(ch.record(), Field{Key: "latest_news_urls", Value: []any{}})
+	d := ch.record()
+	if ch.ShopQuery != "" {
+		d = append(d, Field{Key: "shop_query", Value: ch.ShopQuery})
+	}
+	return d
 }
 
 // Archives encodes the channel archive, optionally with populated entries.
@@ -210,6 +218,90 @@ func ArchiveEntry(id int64, language, summaryURL string) Map {
 		{"default_language", language},
 		{"languages", []any{Map{{"language", language}, {"summary_url", summaryURL}}}},
 	}
+}
+
+// ServiceStatus values the bcat list parser accepts; anything else fails
+// the whole list (0x67d). "expired" retires the topic on the console.
+const (
+	InService = "in_service"
+	Expired   = "expired"
+)
+
+// ListLanguage is one language edition of a list entry. The module picks
+// the entry whose language matches the console, else the one matching
+// default_language, then downloads URL and expects exactly Size bytes.
+type ListLanguage struct {
+	Language  string
+	DataID    int64
+	URL       string // https, at most 256 bytes
+	Size      int64  // exact byte length of what URL serves (the container)
+	Overwrite bool   // replace an already received news_id
+}
+
+// ListEntry is one data_list entry of the bcat-list response.
+type ListEntry struct {
+	NewsID           int64
+	PublishingTime   int64
+	DeletionPriority int64
+	DefaultLanguage  string
+	Languages        []ListLanguage
+}
+
+func (e ListEntry) encode() Map {
+	langs := make([]any, 0, len(e.Languages))
+	for _, l := range e.Languages {
+		// language first: the streaming parser only reads data_id, url,
+		// size and overwrite of an edition it has already selected.
+		langs = append(langs, Map{
+			{"language", l.Language},
+			{"data_id", l.DataID},
+			{"url", l.URL},
+			{"size", l.Size},
+			{"overwrite", l.Overwrite},
+		})
+	}
+	return Map{
+		{"version", Map{{"format", int64(1)}, {"semantics", int64(1)}}},
+		{"news_id", e.NewsID},
+		{"publishing_time", e.PublishingTime},
+		{"deletion_priority", e.DeletionPriority},
+		{"default_language", e.DefaultLanguage},
+		{"languages", langs},
+	}
+}
+
+// List encodes the bcat-list response for one topic
+// (/api/nx/v1/list/<topic>). topic_id, service_status and na_required must
+// precede the directories: the parser rejects a data_list it reaches
+// before all three. test_distribution is emitted only when set. The
+// directory object carries data_list alone; no other directory field was
+// recovered from the parser.
+func List(topicID, status string, testDistribution bool, entries ...ListEntry) Map {
+	list := make([]any, 0, len(entries))
+	for _, e := range entries {
+		list = append(list, e.encode())
+	}
+	m := Map{
+		{"topic_id", topicID},
+		{"service_status", status},
+		{"na_required", false},
+	}
+	if testDistribution {
+		m = append(m, Field{"test_distribution", true})
+	}
+	return append(m, Field{"directories", []any{Map{{"data_list", list}}}})
+}
+
+// MaxTitleTopics bounds the auto-subscription answer.
+const MaxTitleTopics = 64
+
+// TitleTopics encodes /api/nx/v1/titles/<tid>/topics: a bare array of topic
+// id strings the console subscribes to when the title launches.
+func TitleTopics(topics []string) ([]any, error) {
+	if len(topics) > MaxTitleTopics {
+		return nil, fmt.Errorf("%d topics for one title, max %d", len(topics), MaxTitleTopics)
+	}
+	return stringsToAny(topics), nil
 }
 
 // Summary is the separate card payload fetched through summary_url. Its url
@@ -247,7 +339,45 @@ type Article struct {
 	BodyText        string
 	BodyImage       []byte // 800x364 baseline JFIF JPEG
 	BodyImageHeight int64
+
+	More *More // optional link button under the article
 }
+
+// More is the article's link button. Type is "game", "shop" or "browser";
+// which of the other fields each type reads is inferred, not traced, so
+// the builder emits exactly the fields the author set.
+type More struct {
+	Type           string
+	ApplicationIDs []uint64 // title ids, e.g. 0x0100abcd12340000
+	Query          string   // raw eShop query (shop)
+	URL            string   // https page (browser)
+}
+
+func (m *More) encode() Map {
+	out := Map{{"type", m.Type}}
+	if len(m.ApplicationIDs) > 0 {
+		ids := make([]any, 0, len(m.ApplicationIDs))
+		for _, id := range m.ApplicationIDs {
+			ids = append(ids, int64(id))
+		}
+		out = append(out, Field{"application_ids", ids})
+	}
+	if m.Query != "" {
+		out = append(out, Field{"query", m.Query})
+	}
+	if m.URL != "" {
+		out = append(out, Field{"url", m.URL})
+	}
+	return out
+}
+
+// Priority is the record priority of a normal article. qlaunch's main
+// list shows priority>50 AND priority<1000 (1000..1998 is a second band),
+// so 50 — what the seeds sent until 2026-09-23 — stored but never listed.
+const Priority = 100
+
+// DeletionPriority is shared by the record and its list entry.
+const DeletionPriority = 100
 
 // Payload encodes the live article.
 func (a Article) Payload() Map { return a.payload(a.PublishedAt, a.ExpireAt) }
@@ -260,21 +390,24 @@ func (a Article) ExpiredPayload() Map {
 }
 
 func (a Article) payload(published, expire int64) Map {
-	return Map{
+	m := Map{
 		{"version", Map{{"format", int64(1)}, {"semantics", int64(1)}}},
 		{"news_id", a.NewsID},
 		{"published_at", published},
 		{"expire_at", expire},
 		{"pickup_limit", expire},
-		{"priority", int64(50)},
-		{"deletion_priority", int64(100)},
+		{"priority", int64(Priority)},
+		{"deletion_priority", int64(DeletionPriority)},
 		{"language", a.Language},
 		{"supported_languages", stringsToAny(a.SupportedLanguages)},
 		{"display_type", "NORMAL"},
 		{"topic_id", a.TopicID},
 		{"no_photography", int64(0)},
 		{"surprise", int64(0)},
-		{"essential_pickup_limit", int64(0)},
+		// The record parser reads essential_pickup as a nested map; the
+		// flat essential_pickup_limit the seeds used to send was ignored.
+		// pickup_limit 0 = no essential-pickup window.
+		{"essential_pickup", Map{{"pickup_limit", int64(0)}, {"priority_after", int64(Priority)}}},
 		{"movie", int64(0)},
 		{"subject", Map{{"caption", int64(1)}, {"text", a.Title}}},
 		{"topic_name", a.TopicName},
@@ -289,6 +422,10 @@ func (a Article) payload(published, expire int64) Map {
 			{"main_image", a.BodyImage},
 		}},
 	}
+	if a.More != nil {
+		m = append(m, Field{"more", a.More.encode()})
+	}
+	return m
 }
 
 func stringsToAny(in []string) []any {
