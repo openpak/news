@@ -64,8 +64,17 @@ and stable ids are what make scoped update-in-place possible.
 Article file fields: `title` (≤ 100 chars), `body` (**one paragraph**,
 ≤ 1200 chars — newline rendering is unverified in the native reader),
 `footer` (≤ 80), `language` + `supported_languages` (`en-GB` style, the
-article language must be listed), `lifetime_days` (1..30) and `art`
-(`motif`).
+article language must be listed), `lifetime_days` (1..30), `art`
+(`motif`) and an optional `more` link button: `{"type": "game",
+"application_ids": ["<tid16>"]}`, `{"type": "shop", "query": "…"}` or
+`{"type": "browser", "url": "https://…"}` (see the
+[authoring guide](../docs/native-news-authoring-guide.md)).
+
+Optional channel fields in `lineup.json`: `shop_query` (the channel page's
+eShop button), `application_ids` (titles whose launch auto-subscribes the
+console to the channel) and `test_distribution` (bypasses the console's
+received-id history; test channels only). Topic ids `retired` and `titles`
+are reserved.
 
 **Real screenshots** (PRD rectified 2026-09-11): drop an operator-captured
 gameplay image at `channels/screenshots/<news_id>.png` (or `.jpg`) and it
@@ -115,9 +124,15 @@ records), `<topic>/detail.msgpack`, `<topic>/icon.jpg` (70×70),
 newest first, linking its summary), `<topic>/<id>/{summary.msgpack,
 article.msgpack,card.jpg,hero.jpg,article-expired.msgpack}` (summary card
 title + 70×70 + 358×201 + article URL; card and hero also embedded in the
-article), `retired/<topic>/<id>/article.msgpack` (expired replacement for
-anything retired), and `manifest.json` (inventory + SHA-256 of every
-payload). Requires libjpeg-turbo's `cjpeg` for the baseline JFIF 4:4:4
+article), `<topic>/list.msgpack` (the bcat-list the News module receives:
+one entry per active article linking its article container with the exact
+signed size, plus each retired article's expired replacement with
+`overwrite`), `retired/<topic>/<id>/article.msgpack` (expired replacement
+for anything retired), `retired/<topic>/list.msgpack` (a removed channel's
+list, `service_status: "expired"`), `titles/<tid>.msgpack` and
+`titles/none.msgpack` (auto-subscription topic arrays), and
+`manifest.json` (inventory + SHA-256 of every payload, plus each article's
+content hash and overwrite flag). Requires libjpeg-turbo's `cjpeg` for the baseline JFIF 4:4:4
 images the console has accepted in every rendering test.
 
 ## Sign (keys stay off the repository)
@@ -133,8 +148,10 @@ The script builds `cmd/newscontainer`, wraps every payload into a BCAT
 container (RSA-2048 PKCS#1 v1.5/SHA-256 over plaintext, AES-CTR, fresh IV,
 secret index 0), then **verifies each container independently with openssl
 against the public key in `tools/news-patch/openpak-bcat-public.pem`** and
-writes `SHA256SUMS` (excluding itself). It skips `retired/` and
-`manifest.json`. Input, output and key paths must not overlap — a `-f` run
+writes `SHA256SUMS` (excluding itself). It signs everything except
+`manifest.json`, including `retired/` and `titles/`, and checks that each
+container is exactly 288 bytes plus its payload: the size the lists
+advertise. Input, output and key paths must not overlap — a `-f` run
 deletes the output directory first, so an output that contains the input or
 a key is rejected before anything is removed. The signing
 and AES key paths above are owner-local; never copy them into any
@@ -144,7 +161,9 @@ just deleting the signed directory.
 Routes derive from the fixture tree — `catalog` at
 `/api/nx/v1/topics/catalog`, plus per channel `.../topics/<topic>/detail`,
 `.../topics/<topic>/icon`, `/api/nx/v2/topics/<topic>/online_archives`, and
-the per-article `/openpak/v1/topics/<topic>/news/<id>/{summary,article}`.
+the per-article `/openpak/v1/topics/<topic>/news/<id>/{summary,article}`,
+`/api/nx/v1/list/<topic>`, `/openpak/v1/topics/<topic>/news/<id>/expired`,
+`/api/nx/v1/titles/<tid>/topics` and `/api/nx/v2/latest_news/<n>`.
 This listener is plain HTTP for host inspection only; the console always
 uses the TLS arrangement on the server. Unknown topics (including
 Nintendo's own channels) fall through to the adapter fallback exactly as
@@ -162,27 +181,32 @@ and restart. Keep the previous image and fixture directory for rollback.
 
 ## Update and retire
 
-- **Update an article:** edit its JSON, rerun build + sign. Same `news_id`,
-  new timestamps and content — the identity the console knows stays stable.
+- **Update an article:** edit its JSON, rerun build + sign **into the same
+  `--out`**. Same `news_id`; the build compares the content hash with the
+  previous `manifest.json` and sets the list's `overwrite` from then on. A
+  console skips a news_id it has already received unless `overwrite` is set,
+  so an update built into a fresh directory would be ignored by consoles
+  that hold the old copy.
 - **Retire one article:** `go run ./cmd/newsseed --retire openpak_help/2609100303`
   (add a real `reason` to `channels/retired.json`), then rebuild and sign.
   The article loses its archive link and active outputs; an expired
-  replacement with the same id is produced under `retired/` so the console
-  can retire its copy. Retirement on the console is expiry-based — the
+  replacement with the same id is produced under `retired/` and listed with
+  `overwrite`, so the console replaces its copy. Retirement on the console is expiry-based — the
   expired card disappears during the console's own housekeeping (observed
   once, 14→13 records); instant deletion is **not** guaranteed and not
   promised anywhere.
 - **Un-retire:** `--unretire topic/id`, rebuild, resign. (This restores the
 article to an active channel; a removed channel must first be restored to
 `lineup.json`.)
-- **Un-retire:** `--unretire topic/id`, rebuild, resign.
 - **Remove a channel:** retire its articles first (see above). Then, for
 each retirement entry, copy the channel's block from `lineup.json` into the
 entry as its `topic` snapshot, and delete the channel's block from
 `lineup.json`. Keep the article source files — they remain the payload
 source for the retirement fixtures, which the build keeps producing under
 `retired/` and records under `removed_channels` in the manifest. The next
-catalog simply stops listing the channel. Rebuilding without the topic
+catalog simply stops listing the channel, and its list answers
+`service_status: "expired"`, which retires the topic on consoles still
+subscribed to it. Rebuilding without the topic
 snapshot (or with a removed-channel article still unretired) fails with an
 explanation, never silently. Removing the **last** channel builds an empty
 catalog, and the CDN serves it as catalog-only — a deliberate state, though

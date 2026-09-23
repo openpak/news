@@ -43,16 +43,40 @@ Channel record fields currently used:
 | `name`, `publisher`, `description` | Display strings |
 | `publishing_time`, `last_posted_at` | Integer UTC Unix seconds |
 | `important` | Boolean |
+| `shop_query` | Optional; detail only. The raw eShop query behind the channel page's shop button |
 
-The catalog is an array of records. Detail is one record with `latest_news_urls`
-(currently empty). Archives is a map with boolean `na_required` and array
-`data_list` (currently empty). Do not assume archive entries are whole articles
-or invent URL fields: trace their parser first.
+In `channels/lineup.json`, a channel can also set `application_ids`: title
+ids (16 lowercase hex digits) whose launch auto-subscribes the console to
+the channel (`titles/<tid>/topics`). It can also set `test_distribution`,
+which makes the module ignore its received-id history. Use that for test
+channels only.
+
+The catalog is an array of records. Detail is the same record plus the
+optional `shop_query`. `latest_news_urls` is no longer sent: 22.5.0 parses it
+nowhere. Archives is a map with boolean `na_required` and array `data_list`
+(qlaunch's channel page). The per-topic **list** is what the News module
+itself receives; its schema is in
+[the delivery doc](native-news-article-delivery.md#reception-path-in-2250-2026-09-23).
+Do not invent URL fields: trace their parser first.
 
 The local article format that rendered correctly is `version.format=1`,
 `version.semantics=1`, `display_type="NORMAL"`, with `subject` and `body` maps.
 Use `body.text`, binary `body.main_image`, and integer `body.main_image_height`.
-Use binary `topic_image` and `list_image` too. The earlier LIST/body-array
+Use binary `topic_image` and `list_image` too. Records carry priority 100:
+qlaunch's main list shows only `50 < priority < 1000`.
+
+An article can end with a link button, `more`. Set it in the article JSON:
+
+```json
+"more": {"type": "game", "application_ids": ["0100abcd12340000"]}
+"more": {"type": "shop", "query": "dst_nsuid=70010000000001"}
+"more": {"type": "browser", "url": "https://openpak.example/guide"}
+```
+
+`game` needs 1–5 title ids, `shop` a query (or title ids), and `browser` an
+https URL of at most 256 bytes. Only the fields you set are emitted. The key
+names are read from 22.5.0 qlaunch; which fields each type uses is inferred
+and unverified on hardware (see [provenance](provenance.md)). The earlier LIST/body-array
 experiments displayed titles without working body/images; do not treat those
 historical fixtures as the current example. The sample preserves the working
 layout but uses an OpenPak channel ID whose article association is still untested.
@@ -120,11 +144,20 @@ to the adapter fallback as before:
 | `/api/nx/v1/topics/<topic>/detail` | `<topic>/detail.bcat` |
 | `/api/nx/v1/topics/<topic>/icon` | `<topic>/icon.bcat` (JPEG plaintext) |
 | `/api/nx/v2/topics/<topic>/online_archives` | `<topic>/archives.bcat` |
+| `/api/nx/v1/list/<topic>` | `<topic>/list.bcat`: what the News module receives. Reached through the nx-baas forward from `bcat-list-lp1` |
+| `/openpak/v1/topics/<topic>/news/<id>/{summary,article}` | `<topic>/<id>/{summary,article}.bcat` |
+| `/openpak/v1/topics/<topic>/news/<id>/expired` | `retired/<topic>/<id>/article.bcat` |
+| `/api/nx/v1/titles/<tid16>/topics` | `titles/<tid>.bcat`, else `titles/none.bcat` |
+| `/api/nx/v2/latest_news/<n>` | the newest article's summary |
+
+The v1 `topics/<topic>/archives` and `topics/<topic>/<id>/article` routes
+still answer, but 22.5.0 builds neither path. Every response carries a strong
+ETag and answers If-None-Match (304) and Range/If-Range.
 
 The fixed fixtures ignore query parameters. A production renderer must honor
 language/country targeting and any verified pagination behavior. Responses use
-`application/octet-stream`, accurate lengths and `Cache-Control: no-store` for
-testing. Unknown paths currently forward to the existing adapter; that is not
+`application/octet-stream`, accurate lengths, an ETag and
+`Cache-Control: no-store` for testing. Unknown paths currently forward to the existing adapter; that is not
 proof the fallback returns a native-compatible container.
 
 Local smoke test of signed fixtures (the seed's signed tree works directly):

@@ -1,5 +1,12 @@
 # Channel archive and article delivery experiment
 
+> **2026-09-23:** the 22.5.0 firmware audit replaced the reception model
+> below. The News module fetches only the bcat-list and the URLs it names;
+> subscription status 2 (not 1) means subscribed. See
+> [the reception path](#reception-path-in-2250-2026-09-23) at the end and
+> [provenance](provenance.md). The archive/summary sections still describe
+> qlaunch's channel pages correctly.
+
 2026-09-10. Owner authorized deployment. Image **v006** now serves four
 channels with three articles each on the isolated News CDN. Host and public
 HTTPS checks pass; native UI acceptance of populated archives, summary cards
@@ -53,8 +60,8 @@ Existing catalog/detail/icon routes remain. Each active channel now exposes:
 The CDN loads paired summary/article containers from numeric article directories;
 invalid IDs and missing pairs fail startup. Expired artifacts, source JSON and
 arbitrary file paths are not exposed. No signing/AES keys enter the CDN image.
-The independent `latest_news_urls` field in channel detail stays empty because
-its subscription-delivery schema has not been established.
+The `latest_news_urls` field in channel detail was sent empty until
+2026-09-23; 22.5.0 parses it nowhere, so it is no longer emitted.
 
 `newsseed` writes summary files and archive links for active IDs, newest ID
 first. Retirement removes the archive link and active output directory; scoped
@@ -124,8 +131,12 @@ and only a filter naming our own topic is ever used to write — `"1"` would
 subscribe the console to every topic. The per-candidate result codes from
 the first hardware run are the finding, whatever they say.
 
-If reception works, `latest_news_urls` and the refresh schedule stay the
-next unknowns: an immediate receive is not proof of unattended refresh.
+If reception works, the refresh schedule stays the next unknown: an
+immediate receive is not proof of unattended refresh.
+
+**Corrected 2026-09-23:** v0.21 wrote status **1**, which 22.5.0 treats as
+*unsubscribed* (0 forget, 1 unsubscribed, 2 subscribed, 3 auto). The
+accepted spelling is the bare topic id. Probe v0.22 writes 2.
 
 ## Local sync fallback (2026-09-16)
 
@@ -169,3 +180,77 @@ News. Check for three cards, then open one and confirm body/images. Correlate
 archive, summary and article requests with the UI result. No new NRO or reboot
 is required for this server update. A visible channel card is not evidence of
 background subscription delivery or persistence through reboot.
+
+## Reception path in 22.5.0 (2026-09-23)
+
+From the firmware audit (facts and addresses in [provenance](provenance.md)).
+None of this is tested on hardware yet.
+
+1. The topic is subscribed with status 2: Find Channels' follow, probe v0.22
+   D-pad Down, or auto-subscription on title launch.
+2. On a push, a country change or `RequestImmediateReception`, the bcat
+   worker gets an edge token, then fetches
+   `https://bcat-list-lp1.cdn.nintendo.net/api/nx/v1/list/<topic>?l=<lang>[&c[]=CC]`.
+   The request carries `If-None-Match` or `If-Range`+`Range`, and a 304
+   counts as success. There is no periodic polling.
+3. The list is a signed/encrypted container like every other, whose
+   plaintext is:
+
+   ```json
+   {
+     "topic_id": "openpak_news",
+     "service_status": "in_service",
+     "na_required": false,
+     "directories": [{"data_list": [{
+       "version": {"format": 1, "semantics": 1},
+       "news_id": 2609110005,
+       "publishing_time": 1790150400,
+       "deletion_priority": 100,
+       "default_language": "en-GB",
+       "languages": [{
+         "language": "en-GB",
+         "data_id": 123456789,
+         "url": "https://bcat-topics-lp1.cdn.nintendo.net/openpak/v1/topics/openpak_news/news/2609110005/article",
+         "size": 47945,
+         "overwrite": false
+       }]
+     }]}]
+   }
+   ```
+
+   Key order matters: `data_list` is rejected unless `topic_id`,
+   `service_status` and `na_required` came first. `language` must lead
+   each edition. `service_status: "expired"` retires the topic.
+   `test_distribution: true` (optional, before `directories`) bypasses the
+   history.
+4. For each entry, the module downloads the selected edition's `url` (the
+   signed article container, exactly `size` bytes). It skips news ids
+   already in `history.bin` unless `overwrite` is set. It inserts the
+   record with `opted_in=1, newly=1, read=0`, after purging expired rows.
+5. qlaunch's main list shows `read=0 AND pickup_limit>now AND
+   (expire_at=0 OR expire_at>=now) AND opted_in=1 AND 50<priority<1000`.
+   Articles now carry priority 100.
+
+What OpenPak builds and serves for this (all on the CDN's `:20040`, matched
+by path whatever the Host, each with a strong ETag, 304 and Range support):
+
+| Route | Fixture |
+| --- | --- |
+| `/api/nx/v1/list/<topic>` | `<topic>/list.bcat`, or `retired/<topic>/list.bcat` (expired) for a removed channel |
+| `/openpak/v1/topics/<t>/news/<id>/article` | `<t>/<id>/article.bcat` (list `url`) |
+| `/openpak/v1/topics/<t>/news/<id>/expired` | `retired/<t>/<id>/article.bcat`, the retired article's replacement, listed with `overwrite` |
+| `/api/nx/v1/titles/<tid16>/topics` | `titles/<tid>.bcat`, else `titles/none.bcat` (an empty array) |
+| `/api/nx/v2/latest_news/<n>` | the newest article's `summary.bcat` (qlaunch's request; its trigger is unknown) |
+
+`bcat-list-lp1` resolves to nx-baas, which forwards `openpak_*` lists and
+`titles/*/topics` here. The article URLs stay on `bcat-topics-lp1`, which
+already reaches the CDN directly. The list and titles prefixes never fall
+back to nx-baas, which would loop. The v1 `topics/<t>/archives` and
+`topics/<t>/<id>/article` routes remain, but 22.5.0 builds neither.
+
+Update and retirement: an article whose content changes gets
+`overwrite: true` from then on. So does a retired article (listed via its
+expired replacement, which the console then purges as expired) and an
+unretired one. Republishing unchanged content at a new `--published` does
+not set it. Whether an overwrite resets a card the player already read is
+unknown.
