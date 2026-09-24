@@ -3,7 +3,7 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
-## Unreleased
+## v0.2.0 — 2026-09-23
 
 - Native News admin API (`newscdn -data`, `docs/admin-api.md`; not deployed):
   - channel and article CRUD over a writable `/data` source (the channels/ format), with image uploads for channel icons and article banners
@@ -21,6 +21,11 @@ of truth; this file is the readable summary.
   - probe v0.22 subscribes with status 2 (1 means unsubscribed) using the bare topic id
   - docs: `provenance.md`, reception path, corrected freshness-gating and archive-route claims
 
+- Native News, 2026-09-16 hardware run: seed expanded to 33 articles with real screenshots,
+  plaintext article payloads and native v1 archive/article routes in `newsexperiment`,
+  news-probe v0.21 (subscription and reception over IPC), `news-list-no-dauth` edge-token patch
+- ci: tests on self-hosted runners, fixed-port integration tests serialized, registry auth
+  scoped to release steps
 - release: job-scoped registry auth file [fce777c]
 - release: build on the self-hosted runner with podman; private-repo minutes are metered [c3c596f]
 - Native News: containers, the CDN fixture, patch tooling and the hardware notes [b067f92]
