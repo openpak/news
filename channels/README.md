@@ -239,7 +239,7 @@ least one channel live.
 | `openpak_news/2609110001` | The Switch is OpenPak's home network | retail-Switch milestone (main README); servers roster |
 | `openpak_news/2609110002` | The Wii U network takes shape | `nn-account` M2/M3 done; `nn-friends` M3 end-to-end vs live core |
 | `openpak_news/2609110003` | The 3DS shares the new network brain | same adapter family; `nn-account`/`nn-friends` status |
-| `openpak_news/2609110004` | The Wii: planned, honest, not yet built | `research-third-party-networks.md` verdicts (Wiimmfi closed; WiiLink WFC open) |
+| `openpak_news/2609110004` | The Wii: planned, honest, not yet built | <https://github.com/openpak/docs/blob/main/research/research-third-party-networks.md> verdicts (Wiimmfi closed; WiiLink WFC open) |
 | `openpak_news/2609110005` | Nintendo DS: the plan is on file | same research: one GameSpy-style base planned for Wii+DS |
 | `openpak_games/2609100101` | Outbound players share a world on OpenPak | `servers/outbound/HANDOFF.md` (2026-09-06/07) |
 | `openpak_games/2609100102` | Stardew Valley farms go multiplayer | `servers/stardew-valley/README.md` (2026-09-07, Ryujinx-verified) |
