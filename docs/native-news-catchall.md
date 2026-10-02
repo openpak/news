@@ -66,7 +66,7 @@ channel information". This differs from the earlier local 404 failure.
 
 The container was replaced at 22:09:03 UTC during investigation. The active
 image identifies version 0.7.22, revision
-94530688ee7fcdb0ba75cc2ede27f06c0657c929. A subsequent unauthenticated
+4b40e15951205a4001c808a461df25a10607e2f9. A subsequent unauthenticated
 read-only GET pinned to the owner's server returned 37 bytes of JSON with
 keys topics (empty array) and updatedAt (integer), not a BCAT container.
 SHA-256: 46863c0843bf97afcd2b03c5d7a61e7f70aa3684b747e3aece71ce51770f7362.
