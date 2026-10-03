@@ -271,7 +271,8 @@ func TestLocalSyncRoutes(t *testing.T) {
 	}
 	// Decoded copies the signer leaves beside the containers: the catalog
 	// and one channel's detail. openpak_games has none and gets no route.
-	plain := map[string][]byte{"catalog.plain": []byte("catalog payload"), "openpak_news/detail.plain": []byte("detail payload")}
+	plain := map[string][]byte{"catalog.plain": []byte("catalog payload"), "openpak_news/detail.plain": []byte("detail payload"),
+		"openpak_news/2609100001/summary.plain": []byte("summary payload")}
 	for rel, payload := range plain {
 		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), payload, 0600); err != nil {
 			t.Fatal(err)
@@ -282,8 +283,9 @@ func TestLocalSyncRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for path, want := range map[string]string{
-		"/openpak/v1/local/catalog":             "catalog payload",
-		"/openpak/v1/local/openpak_news/detail": "detail payload",
+		"/openpak/v1/local/catalog":                              "catalog payload",
+		"/openpak/v1/local/openpak_news/detail":                  "detail payload",
+		"/openpak/v1/local/openpak_news/news/2609100001/summary": "summary payload",
 	} {
 		r := httptest.NewRecorder()
 		h.ServeHTTP(r, httptest.NewRequest("GET", path, nil))

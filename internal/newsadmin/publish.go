@@ -377,7 +377,7 @@ func signTree(in, out string, aesKey []byte, index byte, signing *rsa.PrivateKey
 		// As sign-seed.sh: the catalog and each live channel's detail, icon
 		// and archives stay readable (<name>.plain) for the local routes.
 		if base := filepath.Base(rel); rel == "catalog.msgpack" ||
-			((base == "detail.msgpack" || base == "icon.jpg" || base == "archives.msgpack") &&
+			((base == "detail.msgpack" || base == "icon.jpg" || base == "archives.msgpack" || base == "summary.msgpack") &&
 				!strings.HasPrefix(rel, "retired/") && !strings.HasPrefix(rel, "titles/")) {
 			if err := writeFileMkdir(filepath.Join(out, strings.TrimSuffix(rel, filepath.Ext(rel))+".plain"), plain); err != nil {
 				return count, err

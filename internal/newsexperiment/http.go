@@ -90,6 +90,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 	type channel struct {
 		detail, icon, archives, list []byte
 		plain                        map[string][]byte // detail, icon, archives: decoded, for the local routes
+		summaries                    map[string][]byte // news id -> decoded summary
 		articles                     map[string]map[string][]byte
 		local                        map[string][]byte
 	}
@@ -131,6 +132,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		}
 		ch.articles = map[string]map[string][]byte{}
 		ch.local = map[string][]byte{}
+		ch.summaries = map[string][]byte{}
 		children, err := os.ReadDir(filepath.Join(dir, topic))
 		if err != nil {
 			return nil, err
@@ -151,6 +153,13 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 				resources[resource] = data
 			}
 			ch.articles[child.Name()] = resources
+			summary, err := optionalPlain(filepath.Join(dir, topic, child.Name(), "summary.plain"))
+			if err != nil {
+				return nil, fmt.Errorf("article %s/%s: %w", topic, child.Name(), err)
+			}
+			if summary != nil {
+				ch.summaries[child.Name()] = summary
+			}
 			// Optional: the plaintext payload for local posting.
 			payload, err := os.ReadFile(filepath.Join(dir, topic, child.Name(), "local.msgpack"))
 			switch {
@@ -222,6 +231,9 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		}
 		for id, payload := range ch.local {
 			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/news/"+id, serveFixture(payload, topic+"/"+id+"/local", logger))
+		}
+		for id, payload := range ch.summaries {
+			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/news/"+id+"/summary", serveFixture(payload, topic+"/"+id+"/summary/local", logger))
 		}
 		for name, payload := range ch.plain {
 			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/"+name, serveFixture(payload, topic+"/"+name+"/local", logger))

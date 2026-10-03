@@ -3,6 +3,10 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.2.3 — 2026-10-03
+
+- The decoded copies now include each live article's summary (`<topic>/<id>/summary.plain`, served at `/openpak/v1/local/<topic>/news/<id>/summary`): the firmware's channel page downloads one per tile.
+
 ## v0.2.2 — 2026-10-03
 
 - Decoded copies for clients without the News key (an emulator answering the firmware's News downloads itself): the signers (`sign-seed.sh`, the admin publisher) leave `catalog.plain` and each live channel's `detail.plain`, `icon.plain`, `archives.plain` beside the containers, and `newscdn` serves them at `/openpak/v1/local/catalog` and `/openpak/v1/local/<topic>/{detail,icon,archives}`. Optional: a tree without them serves no such route. Containers and console routes are unchanged.
