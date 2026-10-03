@@ -421,6 +421,11 @@ func TestPublishVerifySwitchAndPush(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(signed, "openpak_test", "2609100001", "local.msgpack")); err != nil {
 		t.Fatal("local.msgpack missing")
 	}
+	for _, rel := range []string{"catalog.plain", "openpak_test/detail.plain", "openpak_test/icon.plain", "openpak_test/archives.plain"} {
+		if _, err := os.Stat(filepath.Join(signed, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("%s missing", rel)
+		}
+	}
 	if _, err := os.Stat(filepath.Join(signed, "SHA256SUMS")); err != nil {
 		t.Fatal("SHA256SUMS missing")
 	}

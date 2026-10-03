@@ -3,6 +3,10 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.2.2 — 2026-10-03
+
+- Decoded copies for clients without the News key (an emulator answering the firmware's News downloads itself): the signers (`sign-seed.sh`, the admin publisher) leave `catalog.plain` and each live channel's `detail.plain`, `icon.plain`, `archives.plain` beside the containers, and `newscdn` serves them at `/openpak/v1/local/catalog` and `/openpak/v1/local/<topic>/{detail,icon,archives}`. Optional: a tree without them serves no such route. Containers and console routes are unchanged.
+
 ## v0.2.1 — 2026-10-03
 
 - Articles without an essential pickup window no longer carry `essential_pickup`. Since v0.2.0 they carried `{pickup_limit: 0, priority_after}`, which qlaunch 22.5.0's handler (0x090867c0) rejects; its article parsers then stop before `subject`, so tiles and article pages showed images and no text. Found on the firmware HOME menu running in the emulator; the same code runs on a console. Every article is rebuilt (and marked overwrite) at the next publish.

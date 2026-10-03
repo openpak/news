@@ -115,6 +115,15 @@ while IFS= read -r src; do
       cp "$src" "$out_dir/${rel%/article.msgpack}/local.msgpack"
       echo "  local payload    ${rel%/article.msgpack}/local.msgpack"
     fi
+    # The catalog and each live channel's detail, icon and archives are
+    # also kept decoded (<name>.plain) for the /openpak/v1/local routes:
+    # an emulator has no News key to open the containers with.
+    case "$rel" in
+      catalog.msgpack|*/detail.msgpack|*/icon.jpg|*/archives.msgpack)
+        if [[ "$rel" != retired/* && "$rel" != titles/* ]]; then
+          cp "$src" "$out_dir/${rel%.*}.plain"
+        fi ;;
+    esac
     count=$((count + 1))
   else
     echo "  VERIFY FAILED    $rel" >&2

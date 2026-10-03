@@ -89,6 +89,7 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 	}
 	type channel struct {
 		detail, icon, archives, list []byte
+		plain                        map[string][]byte // detail, icon, archives: decoded, for the local routes
 		articles                     map[string]map[string][]byte
 		local                        map[string][]byte
 	}
@@ -117,6 +118,16 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		}
 		if ch.list == nil {
 			logger.Warn("channel has no list fixture; the News module cannot receive it", "topic", topic)
+		}
+		ch.plain = map[string][]byte{}
+		for _, name := range []string{"detail", "icon", "archives"} {
+			b, err := optionalPlain(filepath.Join(dir, topic, name+".plain"))
+			if err != nil {
+				return nil, fmt.Errorf("channel %s: %w", topic, err)
+			}
+			if b != nil {
+				ch.plain[name] = b
+			}
 		}
 		ch.articles = map[string]map[string][]byte{}
 		ch.local = map[string][]byte{}
@@ -212,6 +223,9 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		for id, payload := range ch.local {
 			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/news/"+id, serveFixture(payload, topic+"/"+id+"/local", logger))
 		}
+		for name, payload := range ch.plain {
+			mux.HandleFunc("GET /openpak/v1/local/"+topic+"/"+name, serveFixture(payload, topic+"/"+name+"/local", logger))
+		}
 	}
 	for topic, list := range retired.lists {
 		mux.HandleFunc("GET /api/nx/v1/list/"+topic, serveFixture(list, "retired/"+topic+"/list", logger))
@@ -265,6 +279,16 @@ func Handler(dir string, logger *slog.Logger, fallback http.Handler) (http.Handl
 		}
 	}
 	mux.HandleFunc("GET /openpak/v1/local/index", serveFixture(index.Bytes(), "local/index", logger))
+	// The decoded catalog, for a client without the News key (an emulator
+	// answering the firmware's catalog download itself). Optional: a tree
+	// signed before the .plain copies existed has none.
+	catalogPlain, err := optionalPlain(filepath.Join(dir, "catalog.plain"))
+	if err != nil {
+		return nil, fmt.Errorf("catalog: %w", err)
+	}
+	if catalogPlain != nil {
+		mux.HandleFunc("GET /openpak/v1/local/catalog", serveFixture(catalogPlain, "local/catalog", logger))
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("unhandled news route", "method", r.Method, "path", r.URL.Path)
@@ -303,6 +327,19 @@ func optionalFixture(path string) ([]byte, error) {
 	data, err := loadFixture(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
+	}
+	return data, err
+}
+
+// optionalPlain reads the decoded payload the signer leaves beside a
+// container (<name>.plain); nil when the tree has none.
+func optionalPlain(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err == nil && (len(data) == 0 || len(data) > bcatcontainer.MaxPayload) {
+		return nil, fmt.Errorf("invalid plain payload size: %s", path)
 	}
 	return data, err
 }

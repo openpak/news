@@ -269,11 +269,34 @@ func TestLocalSyncRoutes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Decoded copies the signer leaves beside the containers: the catalog
+	// and one channel's detail. openpak_games has none and gets no route.
+	plain := map[string][]byte{"catalog.plain": []byte("catalog payload"), "openpak_news/detail.plain": []byte("detail payload")}
+	for rel, payload := range plain {
+		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), payload, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	h, err := Handler(dir, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	for path, want := range map[string]string{
+		"/openpak/v1/local/catalog":             "catalog payload",
+		"/openpak/v1/local/openpak_news/detail": "detail payload",
+	} {
+		r := httptest.NewRecorder()
+		h.ServeHTTP(r, httptest.NewRequest("GET", path, nil))
+		if r.Code != 200 || r.Body.String() != want {
+			t.Fatalf("%s: %d %q", path, r.Code, r.Body.String())
+		}
+	}
 	r := httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/openpak_games/detail", nil))
+	if r.Code == 200 {
+		t.Fatal("a channel without detail.plain must not serve one")
+	}
+	r = httptest.NewRecorder()
 	h.ServeHTTP(r, httptest.NewRequest("GET", "/openpak/v1/local/index", nil))
 	want := "openpak_games 2609110101 13\nopenpak_news 2609100001 18\nopenpak_news 2609100002 19\n"
 	if r.Code != 200 || r.Body.String() != want {
