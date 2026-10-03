@@ -155,7 +155,7 @@ retired channel can be edited (name, icon…) only after it is restored.
 | `expire_at` | Read-only, derived. `null` until `published_at` is known |
 | `pickup_days` | Optional, 0..`lifetime_days`. How long the unread card stays in the main News list (`pickup_limit = published_at + pickup_days`). `null` = until expiry |
 | `priority` | Optional, default 100. Must be 51..999 (the main list band) or 1000..1998 (the second band). Values ≤ 50 are stored by consoles but never listed, so they are rejected |
-| `essential_pickup` | Optional `{"pickup_days": 1..lifetime_days, "priority_after": 51..1998}`; `priority_after` defaults to `priority`. `null` = none (sent as `pickup_limit 0`). Semantics are inferred from the firmware, unverified on hardware |
+| `essential_pickup` | Optional `{"pickup_days": 1..lifetime_days, "priority_after": 51..1998}`; `priority_after` defaults to `priority`. `null` = none (the `essential_pickup` key is then left out of the article: qlaunch 22.5.0 rejects `pickup_limit 0` and shows the article without any text). Semantics are inferred from the firmware, unverified on hardware |
 | `art.motif` | Required on create. A scene motif from `GET /motifs`. Used when no image is uploaded |
 | `art.hue` | Integer, stored, currently unused |
 | `has_image` | Read-only. `true` when an uploaded image replaces the generated banner (card 358×201 and hero 800×364, center-cropped) |

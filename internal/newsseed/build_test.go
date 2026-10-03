@@ -510,8 +510,8 @@ func TestListShape(t *testing.T) {
 	if p := get(record, "priority").(int64); p <= 50 || p >= 1000 {
 		t.Fatalf("priority %d outside the main list band", p)
 	}
-	if get(record, "essential_pickup_limit") != nil || get(record, "essential_pickup") == nil {
-		t.Fatal("essential_pickup must be nested")
+	if get(record, "essential_pickup_limit") != nil || get(record, "essential_pickup") != nil {
+		t.Fatal("no essential window: neither the flat key nor essential_pickup")
 	}
 	detail := decodeFile(t, filepath.Join(out, "openpak_test", "detail.msgpack")).(newsformat.Map)
 	if get(detail, "latest_news_urls") != nil || get(detail, "shop_query") != nil {

@@ -344,7 +344,7 @@ type Article struct {
 
 	// Optional record windows; zero values keep the defaults every seed
 	// has sent: priority Priority, pickup_limit = expire_at, no essential
-	// pickup window (pickup_limit 0) with priority_after = priority.
+	// pickup window (the essential_pickup key is omitted).
 	Priority               int64 // 0 = Priority
 	PickupLimit            int64 // UTC Unix seconds; 0 = ExpireAt
 	EssentialPickupLimit   int64 // UTC Unix seconds; 0 = none
@@ -426,10 +426,17 @@ func (a Article) payload(published, expire, pickup, essential int64) Map {
 		{"topic_id", a.TopicID},
 		{"no_photography", int64(0)},
 		{"surprise", int64(0)},
-		// The record parser reads essential_pickup as a nested map; the
-		// flat essential_pickup_limit the seeds used to send was ignored.
-		// pickup_limit 0 = no essential-pickup window.
-		{"essential_pickup", Map{{"pickup_limit", essential}, {"priority_after", after}}},
+	}
+	// The record parser reads essential_pickup as a nested map; the flat
+	// essential_pickup_limit the seeds used to send was ignored. With no
+	// essential window the key is left out: qlaunch 22.5.0's handler
+	// (0x090867c0) fails unless both values are non-zero, and that aborts
+	// its article parsers before subject, so pickup_limit 0 showed every
+	// tile and article without text.
+	if essential != 0 {
+		m = append(m, Field{"essential_pickup", Map{{"pickup_limit", essential}, {"priority_after", after}}})
+	}
+	m = append(m, Map{
 		{"movie", int64(0)},
 		{"subject", Map{{"caption", int64(1)}, {"text", a.Title}}},
 		{"topic_name", a.TopicName},
@@ -443,7 +450,7 @@ func (a Article) payload(published, expire, pickup, essential int64) Map {
 			{"main_image_height", a.BodyImageHeight},
 			{"main_image", a.BodyImage},
 		}},
-	}
+	}...)
 	if a.More != nil {
 		m = append(m, Field{"more", a.More.encode()})
 	}

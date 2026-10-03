@@ -114,23 +114,30 @@ func TestArticlePayloadOrder(t *testing.T) {
 	want := []string{"version", "news_id", "published_at", "expire_at", "pickup_limit",
 		"priority", "deletion_priority", "language", "supported_languages",
 		"display_type", "topic_id", "no_photography", "surprise",
-		"essential_pickup", "movie", "subject", "topic_name", "topic_image",
+		"movie", "subject", "topic_name", "topic_image",
 		"topic_publisher", "topic_description", "list_image", "footer", "body"}
 	assertOrder(t, p, want)
 	if got := p[1].Value.(int64); got != 123 {
 		t.Fatalf("news_id = %d", got)
 	}
-	subject := p[15].Value.(Map)
+	subject := p[14].Value.(Map)
 	assertOrder(t, subject, []string{"caption", "text"})
-	body := p[22].Value.(Map)
+	body := p[21].Value.(Map)
 	assertOrder(t, body, []string{"text", "main_image_height", "main_image"})
 	// qlaunch lists 50 < priority < 1000 only.
 	if got := p[5].Value.(int64); got != 100 {
 		t.Fatalf("priority = %d, want 100", got)
 	}
-	ep := p[13].Value.(Map)
-	assertOrder(t, ep, []string{"pickup_limit", "priority_after"})
-	if ep[0].Value.(int64) != 0 || ep[1].Value.(int64) != 100 {
+	// No essential window: no key at all (pickup_limit 0 breaks qlaunch's
+	// text parsers). With a window it sits before movie, both values set.
+	withWindow := a
+	withWindow.EssentialPickupLimit = 2000000000
+	ep := withWindow.Payload()[13]
+	if ep.Key != "essential_pickup" {
+		t.Fatalf("field 13 = %q, want essential_pickup", ep.Key)
+	}
+	assertOrder(t, ep.Value.(Map), []string{"pickup_limit", "priority_after"})
+	if v := ep.Value.(Map); v[0].Value.(int64) != 2000000000 || v[1].Value.(int64) != 100 {
 		t.Fatal("essential_pickup values")
 	}
 

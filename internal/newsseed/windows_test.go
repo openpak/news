@@ -37,7 +37,7 @@ func TestArticleWindows(t *testing.T) {
 	}
 	def := decodeFile(t, filepath.Join(out, "openpak_test/2609100001/article.msgpack")).(newsformat.Map)
 	if get(def, "priority") != int64(100) || get(def, "pickup_limit") != get(def, "expire_at") ||
-		get(get(def, "essential_pickup").(newsformat.Map), "pickup_limit") != int64(0) {
+		get(def, "essential_pickup") != nil {
 		t.Errorf("defaults changed: %v", def)
 	}
 	for _, bad := range []string{`"priority": 50`, `"pickup_days": 8`, `"published_at": "yesterday"`} {
