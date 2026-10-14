@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140241,
+  "title": "PlateUp! joins OpenPak in beta",
+  "body": "PlateUp! is now in the OpenPak Switch catalogue as a beta title. Running a restaurant, serving customers and growing your kitchen step by step is the heart of the game, and online play is the next thing we are working on. Compatibility testing is still under way, so online sessions may not work for everyone yet. Thanks for testing with us; we will post here once there is more to report.",
+  "footer": "OpenPak PlateUp! — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

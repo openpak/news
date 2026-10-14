@@ -39,6 +39,448 @@
       "icon": {
         "motif": "mark-question"
       }
+    },
+    {
+      "topic_id": "openpak_arms",
+      "name": "ARMS",
+      "publisher": "OpenPak",
+      "description": "News about ARMS on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01009b500007c000"
+      ]
+    },
+    {
+      "topic_id": "openpak_animal_crossing",
+      "name": "Animal Crossing: New Horizons",
+      "publisher": "OpenPak",
+      "description": "News about Animal Crossing: New Horizons on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01006f8002326000"
+      ]
+    },
+    {
+      "topic_id": "openpak_clubhouse_games_51",
+      "name": "Clubhouse Games: 51 Worldwide Classics",
+      "publisher": "OpenPak",
+      "description": "News about Clubhouse Games: 51 Worldwide Classics on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010047700d540000"
+      ]
+    },
+    {
+      "topic_id": "openpak_core_keeper",
+      "name": "Core Keeper",
+      "publisher": "OpenPak",
+      "description": "News about Core Keeper on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010070201d1ba000"
+      ]
+    },
+    {
+      "topic_id": "openpak_crash_team_racing",
+      "name": "Crash Team Racing Nitro-Fueled",
+      "publisher": "OpenPak",
+      "description": "News about Crash Team Racing Nitro-Fueled on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100f9f00c696000"
+      ]
+    },
+    {
+      "topic_id": "openpak_diablo_3",
+      "name": "Diablo III: Eternal Collection",
+      "publisher": "OpenPak",
+      "description": "News about Diablo III: Eternal Collection on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01001b300b9be000"
+      ]
+    },
+    {
+      "topic_id": "openpak_dinkum",
+      "name": "Dinkum",
+      "publisher": "OpenPak",
+      "description": "News about Dinkum on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100a5a020d5e000"
+      ]
+    },
+    {
+      "topic_id": "openpak_dont_starve_together",
+      "name": "Don't Starve Together",
+      "publisher": "OpenPak",
+      "description": "News about Don't Starve Together on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010090100e334000"
+      ]
+    },
+    {
+      "topic_id": "openpak_full_metal_furies",
+      "name": "Full Metal Furies",
+      "publisher": "OpenPak",
+      "description": "News about Full Metal Furies on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010079300ad54000"
+      ]
+    },
+    {
+      "topic_id": "openpak_go_go_town",
+      "name": "Go-Go Town!",
+      "publisher": "OpenPak",
+      "description": "News about Go-Go Town! on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010095001b12a000"
+      ]
+    },
+    {
+      "topic_id": "openpak_heroes_of_hammerwatch",
+      "name": "Heroes of Hammerwatch",
+      "publisher": "OpenPak",
+      "description": "News about Heroes of Hammerwatch on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100d2b00bc54000"
+      ]
+    },
+    {
+      "topic_id": "openpak_human_fall_flat",
+      "name": "Human: Fall Flat",
+      "publisher": "OpenPak",
+      "description": "News about Human: Fall Flat on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01000ca004dca000"
+      ]
+    },
+    {
+      "topic_id": "openpak_kirbys_dream_buffet",
+      "name": "Kirby's Dream Buffet",
+      "publisher": "OpenPak",
+      "description": "News about Kirby's Dream Buffet on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100a8e016236000"
+      ]
+    },
+    {
+      "topic_id": "openpak_mario_golf_super_rush",
+      "name": "Mario Golf: Super Rush",
+      "publisher": "OpenPak",
+      "description": "News about Mario Golf: Super Rush on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100c9c00e25c000"
+      ]
+    },
+    {
+      "topic_id": "openpak_mario_kart_8_deluxe",
+      "name": "Mario Kart 8 Deluxe",
+      "publisher": "OpenPak",
+      "description": "News about Mario Kart 8 Deluxe on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100152000022000"
+      ]
+    },
+    {
+      "topic_id": "openpak_mario_party_superstars",
+      "name": "Mario Party Superstars",
+      "publisher": "OpenPak",
+      "description": "News about Mario Party Superstars on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01006fe013472000"
+      ]
+    },
+    {
+      "topic_id": "openpak_mario_tennis_aces",
+      "name": "Mario Tennis Aces",
+      "publisher": "OpenPak",
+      "description": "News about Mario Tennis Aces on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100bde00862a000"
+      ]
+    },
+    {
+      "topic_id": "openpak_minecraft",
+      "name": "Minecraft: Nintendo Switch Edition",
+      "publisher": "OpenPak",
+      "description": "News about Minecraft: Nintendo Switch Edition on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01006bd001e06000"
+      ]
+    },
+    {
+      "topic_id": "openpak_monopoly",
+      "name": "Monopoly for Nintendo Switch",
+      "publisher": "OpenPak",
+      "description": "News about Monopoly for Nintendo Switch on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01007430037f6000"
+      ]
+    },
+    {
+      "topic_id": "openpak_mh_generations_ultimate",
+      "name": "Monster Hunter Generations Ultimate",
+      "publisher": "OpenPak",
+      "description": "News about Monster Hunter Generations Ultimate on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100770008dd8000"
+      ]
+    },
+    {
+      "topic_id": "openpak_moving_out_2",
+      "name": "Moving Out 2",
+      "publisher": "OpenPak",
+      "description": "News about Moving Out 2 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010065d018172000"
+      ]
+    },
+    {
+      "topic_id": "openpak_outbound",
+      "name": "Outbound",
+      "publisher": "OpenPak",
+      "description": "News about Outbound on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100ed9024eb8000"
+      ]
+    },
+    {
+      "topic_id": "openpak_pico_park",
+      "name": "Pico Park",
+      "publisher": "OpenPak",
+      "description": "News about Pico Park on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01004ea00df70000"
+      ]
+    },
+    {
+      "topic_id": "openpak_plateup",
+      "name": "PlateUp!",
+      "publisher": "OpenPak",
+      "description": "News about PlateUp! on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01003f901a83e000"
+      ]
+    },
+    {
+      "topic_id": "openpak_risk_of_rain",
+      "name": "Risk of Rain",
+      "publisher": "OpenPak",
+      "description": "News about Risk of Rain on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100aaa00acbe800"
+      ]
+    },
+    {
+      "topic_id": "openpak_risk_of_rain_2",
+      "name": "Risk of Rain 2",
+      "publisher": "OpenPak",
+      "description": "News about Risk of Rain 2 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010076d00e4ba000"
+      ]
+    },
+    {
+      "topic_id": "openpak_risk_of_rain_returns",
+      "name": "Risk of Rain Returns",
+      "publisher": "OpenPak",
+      "description": "News about Risk of Rain Returns on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100d1801a0f4000"
+      ]
+    },
+    {
+      "topic_id": "openpak_splatoon_2",
+      "name": "Splatoon 2",
+      "publisher": "OpenPak",
+      "description": "News about Splatoon 2 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "01003bc0000a0000"
+      ]
+    },
+    {
+      "topic_id": "openpak_splatoon_3",
+      "name": "Splatoon 3",
+      "publisher": "OpenPak",
+      "description": "News about Splatoon 3 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100c2500fc20000"
+      ]
+    },
+    {
+      "topic_id": "openpak_stardew_valley",
+      "name": "Stardew Valley",
+      "publisher": "OpenPak",
+      "description": "News about Stardew Valley on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100e65002bb8000"
+      ]
+    },
+    {
+      "topic_id": "openpak_streets_of_rage_4",
+      "name": "Streets of Rage 4",
+      "publisher": "OpenPak",
+      "description": "News about Streets of Rage 4 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100ec9010258000"
+      ]
+    },
+    {
+      "topic_id": "openpak_super_mario_bros_35",
+      "name": "Super Mario Bros. 35",
+      "publisher": "OpenPak",
+      "description": "News about Super Mario Bros. 35 on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100277011f1a000"
+      ]
+    },
+    {
+      "topic_id": "openpak_super_mario_bros_wonder",
+      "name": "Super Mario Bros. Wonder",
+      "publisher": "OpenPak",
+      "description": "News about Super Mario Bros. Wonder on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "010015100b514000"
+      ]
+    },
+    {
+      "topic_id": "openpak_terraria",
+      "name": "Terraria",
+      "publisher": "OpenPak",
+      "description": "News about Terraria on the OpenPak network.",
+      "important": false,
+      "icon": {
+        "motif": "mark-pad"
+      },
+      "application_ids": [
+        "0100e46006708000"
+      ]
     }
   ]
 }

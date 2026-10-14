@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140301,
+  "title": "Stardew Valley's online service is up on OpenPak",
+  "body": "Stardew Valley's online service is now running on OpenPak, so the game's sign-in, friends and multiplayer features have a server to talk to. Online play on a console still needs a small compatibility patch for each version of the game. We are still testing those features, so treat online play as something to try rather than something guaranteed.",
+  "footer": "OpenPak Stardew Valley — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

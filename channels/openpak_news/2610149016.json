@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149016,
+  "title": "PlayStation 3: Pier is up with Sony's XMB, the rest is being measured",
+  "body": "Pier, OpenPak's PlayStation 3 emulator, is in development on a fork of RPCS3. Our test build shows Sony's own XMB on screen, with the Video row and clock running. How much of the rest works, from the store and settings to friends, is still being measured, and no PlayStation 3 online service is live on OpenPak yet. Thirty-one PlayStation 3 titles can be requested from the catalogue.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "mark"
+  }
+}

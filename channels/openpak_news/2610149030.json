@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149030,
+  "title": "Every OpenPak network at a glance",
+  "body": "OpenPak is one network brain with a front door for each console family. Switch is the live one, with dozens of games and Harbor, our own emulator, to play them. Wii U, 3DS, Wii and DS servers are built and waiting on more console-side proof. Xbox 360 and PlayStation 3 have just begun, with Wharf and Pier as their emulators. Original Xbox, Xbox One, PS2, PSP, Vita, PS4 and PS5 are planned and open to requests. Each game has its own channel here, so follow the ones you play.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "horizon"
+  }
+}

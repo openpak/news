@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149018,
+  "title": "PlayStation 2: planned, and open to requests",
+  "body": "PlayStation 2 is planned for OpenPak and not yet built. Like the original Xbox, the Wii and the DS, its online games predate accounts and push notifications, so the work will be per-game rather than a single system-wide network. Thirty PlayStation 2 titles can be requested from the catalogue today. Nothing is live yet, and we will not claim online play for any game until it has been played on a real console.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "mark"
+  }
+}

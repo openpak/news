@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140201,
+  "title": "Monster Hunter Generations Ultimate: online side built for OpenPak",
+  "body": "Monster Hunter Generations Ultimate has its online side implemented on OpenPak, so the network service the game expects is now something we serve. It has not yet been tested on a real console, so treat the online hunts as unproven for now. We will report here once a console has played online through OpenPak.",
+  "footer": "OpenPak Monster Hunter Generations Ultimate — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

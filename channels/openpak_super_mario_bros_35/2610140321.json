@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140321,
+  "title": "Super Mario Bros. 35 is back online on OpenPak",
+  "body": "Super Mario Bros. 35 ended its online service in 2021, and OpenPak now runs a replacement network so the game's battle royale can be played online again. The service is running and has been set up for the game's online mode, but it has not yet been confirmed on a console. Testing is ongoing.",
+  "footer": "OpenPak Super Mario Bros. 35 — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

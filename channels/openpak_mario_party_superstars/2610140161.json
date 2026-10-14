@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140161,
+  "title": "Mario Party Superstars online service is up for testing",
+  "body": "Mario Party Superstars now has its online service running on OpenPak, and testing is ongoing. The service has been in place since 16 September, but the game has not yet been confirmed on a real Switch console, so online play may still have rough edges. We will share more here as testing moves forward.",
+  "footer": "OpenPak Mario Party Superstars — testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140291,
+  "title": "Splatoon 3: online service is deployed, testing continues",
+  "body": "Splatoon 3's online service is deployed on OpenPak, but full online play is not working yet and is still in progress. Our tests are under way, and until they pass we will not call the game playable online. Please don't expect online matches to work for now; we will post here when there is news.",
+  "footer": "OpenPak Splatoon 3 — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

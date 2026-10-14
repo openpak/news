@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140181,
+  "title": "Minecraft: Nintendo Switch Edition joins OpenPak as a beta",
+  "body": "Minecraft: Nintendo Switch Edition is now listed in the OpenPak Switch catalogue as a beta. Compatibility testing is still pending, so we cannot yet promise that the game runs on every setup or that its online features work with OpenPak. We will post an update here once that testing is complete.",
+  "footer": "OpenPak Minecraft — beta, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140311,
+  "title": "Streets of Rage 4 matchmaking is up on OpenPak",
+  "body": "Streets of Rage 4's online matchmaking is now running on OpenPak, and the server is answering requests from the game. Finding and joining an online match is the part we are testing now, and it has not yet been confirmed on a console. Online play is still being tested, so it is not promised yet.",
+  "footer": "OpenPak Streets of Rage 4 — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

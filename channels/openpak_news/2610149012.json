@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149012,
+  "title": "3DS: the network is built, and the first real sign-in is pending",
+  "body": "The 3DS shares the Wii U's social services: friends, friend requests and notifications run on OpenPak and are tested against our live account core. The 3DS sign-in client is built, and what remains is the step only a real 3DS can prove: one sign-in from a console. Identity is only partly finished, because the 3DS Mii part is still missing. Twenty-six 3DS titles are in beta testing and thirteen more can be requested from the catalogue.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "burst"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140151,
+  "title": "Mario Kart 8 Deluxe is live on OpenPak",
+  "body": "Mario Kart 8 Deluxe is live on OpenPak. On 20 September a real Switch and an emulator together completed four full races, so the race flow has been played end to end on a console. The game's online service is served by OpenPak, and we keep testing it as more players join. Gather your friends and get your engines running.",
+  "footer": "OpenPak Mario Kart 8 Deluxe — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

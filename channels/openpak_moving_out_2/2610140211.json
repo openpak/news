@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140211,
+  "title": "Moving Out 2: online service is up for testing on OpenPak",
+  "body": "Moving Out 2 has its online service running on OpenPak and testing is ongoing. The game now reaches its Team17 service through OpenPak, and the session side that carries online play is still being brought up. Online play is not yet working from start to finish, so we are not promising matches. We will post here once a full online session works.",
+  "footer": "OpenPak Moving Out 2 — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

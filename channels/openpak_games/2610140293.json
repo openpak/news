@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140293,
+  "title": "Splatoon 3 is now available on OpenPak",
+  "body": "Splatoon 3 is now available on OpenPak. Follow its own channel, Splatoon 3, for news specific to this game, and check the Titles page for compatibility notes before you play online.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

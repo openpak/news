@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140011,
+  "title": "ARMS is playing online on OpenPak",
+  "body": "ARMS is playing online on OpenPak. A real Switch console and an emulator were matched automatically into the same room and played together on 20 September, so fighters on both sides can meet in online matches. Testing is still ongoing, so expect some rough edges as more players join.",
+  "footer": "OpenPak ARMS — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

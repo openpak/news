@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140021,
+  "title": "Animal Crossing: New Horizons gets its online service on OpenPak",
+  "body": "Animal Crossing: New Horizons now has its online service running on OpenPak. The game's online features are being tested, and we have not yet confirmed the full experience on a real console. Updates will follow as testing moves on.",
+  "footer": "OpenPak Animal Crossing — testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

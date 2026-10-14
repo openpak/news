@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140262,
+  "title": "Welcome to Risk of Rain 2 on OpenPak",
+  "body": "This channel carries news about Risk of Rain 2 on OpenPak: server status, new features, fixes and events. Every post for this game lands here, so subscribe to keep up. Setup and troubleshooting live in OpenPak Help, and the full list of supported games is in OpenPak Games.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

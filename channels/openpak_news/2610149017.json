@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149017,
+  "title": "Original Xbox: planned, and open to requests",
+  "body": "The original Xbox is planned for OpenPak and not yet built. Its online era looks like the Wii and DS: no accounts, no push, and per-game rosters, so it will reuse the same service approach rather than a new one. Twenty-eight original Xbox titles can be requested from the catalogue today. We will not claim online play for any of them until a game has been played online on a real console.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "relay"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140251,
+  "title": "Risk of Rain: online testing on OpenPak",
+  "body": "Risk of Rain is a fast roguelite where the clock keeps ticking and every run plays out differently. OpenPak's online service for the Switch version is up, so the game has a server to reach for its online features. Compatibility testing is still ongoing, so treat online play as a test for now and tell us what you see.",
+  "footer": "OpenPak Risk of Rain — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

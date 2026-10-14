@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140041,
+  "title": "Core Keeper's online play is in beta on OpenPak",
+  "body": "Core Keeper has been added to OpenPak's Switch catalogue as a beta. The Start Online Game and Join Online Game options are there to try, but compatibility testing is still under way, so we cannot promise that every world will work yet. Online sessions may change as testing goes on, so check back here for news.",
+  "footer": "OpenPak Core Keeper — beta, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

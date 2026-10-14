@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140171,
+  "title": "Mario Tennis Aces online service is up for testing",
+  "body": "Mario Tennis Aces now has its online service running on OpenPak, and testing is ongoing. The service has been in place since 16 September, but the game has not yet been confirmed on a real Switch console, so expect rough edges while we work through it. We will post updates here as testing moves forward.",
+  "footer": "OpenPak Mario Tennis Aces — testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

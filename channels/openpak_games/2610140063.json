@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140063,
+  "title": "Diablo III: Eternal Collection is now available on OpenPak",
+  "body": "Diablo III: Eternal Collection is now available on OpenPak. Follow its own channel, Diablo III: Eternal Collection, for news specific to this game, and check the Titles page for compatibility notes before you play online.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

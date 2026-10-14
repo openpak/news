@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140131,
+  "title": "Kirby's Dream Buffet is playable online on OpenPak",
+  "body": "Kirby's Dream Buffet can be played online on OpenPak. Start a random match and the game will search for other players, but a room stays open only briefly, so begin searching within a few seconds of your friends to join the same table. If the seats are not filled in time, the game fills the empty places with computer players. On 19 September a real Switch and an emulator met through random matchmaking and played complete matches together.",
+  "footer": "OpenPak Kirby's Dream Buffet — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

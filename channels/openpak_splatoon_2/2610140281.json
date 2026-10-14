@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140281,
+  "title": "Splatoon 2: online service is up for testing",
+  "body": "Splatoon 2's online service is running on OpenPak and is in testing. The matchmaking side is set up for the game's multiplayer, but we have not yet confirmed the full experience on a console, so treat it as a work in progress. Splatoon 2 players can help by reporting what works and what doesn't.",
+  "footer": "OpenPak Splatoon 2 — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

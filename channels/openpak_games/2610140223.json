@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140223,
+  "title": "Outbound is now available on OpenPak",
+  "body": "Outbound is now available on OpenPak. Follow its own channel, Outbound, for news specific to this game, and check the Titles page for compatibility notes before you play online.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

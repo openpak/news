@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140051,
+  "title": "Crash Team Racing Nitro-Fueled online is under study on OpenPak",
+  "body": "We are looking into how Crash Team Racing Nitro-Fueled's online services should work on OpenPak. Nothing is promised yet: some of its online features may not need OpenPak at all, and we are still checking what the game needs from a console. There are no online dates or features to share at this stage.",
+  "footer": "OpenPak Crash Team Racing — under study, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

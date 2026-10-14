@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140243,
+  "title": "PlateUp! is now available on OpenPak",
+  "body": "PlateUp! is now available on OpenPak. Follow its own channel, PlateUp!, for news specific to this game, and check the Titles page for compatibility notes before you play online.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

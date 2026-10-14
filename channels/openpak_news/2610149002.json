@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149002,
+  "title": "Wharf: the start of OpenPak on Xbox 360",
+  "body": "Wharf is OpenPak's Xbox 360 emulator, built on Xenia Edge, and it is where OpenPak's Xbox 360 integration begins. It aims to boot the console's own dashboard the way Harbor does for the Switch, then connect it to an OpenPak Xbox 360 network for sign-in, friends and online play. Both halves are early: the real dashboard from the 17559 update starts in our build, while first-run setup and the network side are still being worked on. Nothing is playable online yet, and we will say so here when that changes.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

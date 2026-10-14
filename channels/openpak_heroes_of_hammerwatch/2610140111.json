@@ -1,0 +1,10 @@
+{
+  "news_id": 2610140111,
+  "title": "Heroes of Hammerwatch is in the OpenPak catalogue as a beta",
+  "body": "Heroes of Hammerwatch, the action roguelite, is now listed in the OpenPak catalogue as a beta. Compatibility testing is still under way, so we cannot yet promise every part of the game works as it should on OpenPak. We will update this post as testing moves forward. Until then, expect a build that is still being checked.",
+  "footer": "OpenPak Heroes of Hammerwatch — beta, not promised.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 30,
+  "art": {"motif": "pad"}
+}

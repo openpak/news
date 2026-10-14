@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140123,
+  "title": "Human: Fall Flat is now available on OpenPak",
+  "body": "Human: Fall Flat is now available on OpenPak. Follow its own channel, Human: Fall Flat, for news specific to this game, and check the Titles page for compatibility notes before you play online.",
+  "footer": "OpenPak Games — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

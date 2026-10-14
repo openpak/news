@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140141,
+  "title": "Mario Golf: Super Rush online service is up for testing",
+  "body": "Mario Golf: Super Rush now has its online service running on OpenPak, and testing is ongoing. The service has been in place since 16 September, but the game has not yet been confirmed on a real Switch console, so expect rough edges while we work through it. We will share updates here as testing moves forward.",
+  "footer": "OpenPak Mario Golf — testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

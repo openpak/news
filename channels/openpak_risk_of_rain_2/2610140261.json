@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140261,
+  "title": "Risk of Rain 2: matchmaking is up for testing on OpenPak",
+  "body": "Risk of Rain 2 has its matchmaking, ranking and session services running on OpenPak, so the game's online side now has a server to talk to. We are still testing it, so expect rough edges while we work through them. If you try the online features, let us know what happens and what you expected.",
+  "footer": "OpenPak Risk of Rain 2 — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

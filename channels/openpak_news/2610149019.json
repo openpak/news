@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149019,
+  "title": "PSP: planned, and open to requests",
+  "body": "The PSP is planned for OpenPak and not yet built. Its online games are of the same era as the PS2 and the original Xbox, with per-game rosters and no system-wide accounts or push. Twenty-two PSP titles can be requested from the catalogue today. Nothing is live yet, and we will not claim online play for any game until it has been played online on a real console.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "orbit"
+  }
+}

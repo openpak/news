@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140221,
+  "title": "Outbound multiplayer now works end to end on OpenPak",
+  "body": "Outbound multiplayer now works end to end on OpenPak. A real Switch can host a session and another player can join it, so the core online loop is confirmed. Testing continues on the rest of the game, and this page will carry news as more of it is checked.",
+  "footer": "OpenPak Outbound — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

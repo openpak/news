@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149015,
+  "title": "Xbox 360: Wharf boots the real dashboard, sign-in is next",
+  "body": "Wharf, our Xbox 360 emulator, is in development. In our build it already boots Microsoft's own 17559 dashboard, which reaches the Xbox 360 blades, and the current work is the first-run setup: creating a profile and signing in the way the real console does. The Xbox 360 network side is planned, not yet built. Thirty Xbox 360 titles can be requested from the catalogue, and we will report here as each step lands.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "horizon"
+  }
+}

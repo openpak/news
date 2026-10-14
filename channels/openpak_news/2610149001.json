@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149001,
+  "title": "Harbor: our Switch emulator, in development",
+  "body": "Harbor is OpenPak's Nintendo Switch emulator, built on Eden and maintained by OpenPak as its own project. It runs the Switch system menu and games on a computer, and it is meant to pair with the OpenPak Switch network, the same accounts, friends and online services a real Switch uses today. Status: in active development, with its OpenPak integration being rebuilt on upstream Eden and not yet tested title by title. A game starting in Harbor does not yet mean its online play works, so the real console remains where OpenPak is live today.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

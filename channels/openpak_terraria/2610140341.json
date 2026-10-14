@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140341,
+  "title": "Terraria has been played online on OpenPak",
+  "body": "Terraria has been played online through OpenPak, with two accounts sharing one world. Sign-in, friends, presence, game sessions and multiplayer connections all answered during the test. The game's own online play is supported by OpenPak's service, so you can host a world and let a friend join it.",
+  "footer": "OpenPak Terraria — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

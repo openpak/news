@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140231,
+  "title": "Pico Park: online service is up for testing on OpenPak",
+  "body": "Pico Park has its online service deployed on OpenPak for testing. The service is answering, but gameplay compatibility has not yet been verified, so we cannot yet say which rooms or co-op sessions will work. Testing is ongoing and this page will be updated as results come in.",
+  "footer": "OpenPak Pico Park — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

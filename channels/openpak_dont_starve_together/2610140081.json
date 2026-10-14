@@ -1,0 +1,10 @@
+{
+  "news_id": 2610140081,
+  "title": "Don't Starve Together is playable with friends on OpenPak",
+  "body": "Don't Starve Together now works online on OpenPak, with Klei's own login, lobby browser and shard list served by us. Players on a real Switch and in our emulator have joined each other's worlds, and cross-device joining works. Each player needs their own OpenPak account, since two separate accounts are required to play together. Gather, build and survive together in the wilderness with your friends.",
+  "footer": "OpenPak Don't Starve Together — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 30,
+  "art": {"motif": "pad"}
+}

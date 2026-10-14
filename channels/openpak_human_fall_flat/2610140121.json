@@ -1,0 +1,10 @@
+{
+  "news_id": 2610140121,
+  "title": "Human: Fall Flat is online on OpenPak",
+  "body": "Human: Fall Flat now plays online on OpenPak. On 19 September a real Switch and an emulator joined the same session and played together. Pick up, climb and tumble through the levels with friends, and keep an eye on this post for news as more of the online features are tested.",
+  "footer": "OpenPak Human: Fall Flat — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 30,
+  "art": {"motif": "pad"}
+}

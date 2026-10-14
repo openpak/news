@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149014,
+  "title": "Nintendo DS: the service is up, and the emulator path is being tested",
+  "body": "The Nintendo DS uses the same Wi-Fi Connection-style service as the Wii, which is now running on OpenPak. The DS emulator build is being checked against our local stack, and thirty-six DS titles are listed in beta testing. Like the original hardware, the DS has no accounts, no presence and no push notifications, so friends are matched by friend code for each game. We will report here when a DS game has been played online through OpenPak.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "beacon"
+  }
+}

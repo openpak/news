@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140191,
+  "title": "Monopoly joins the OpenPak catalogue in beta",
+  "body": "Monopoly for Nintendo Switch is now in the OpenPak catalogue as a beta. Roll the dice, buy the streets and build up your city as the board game plays on the Switch. Its online side has not been checked on OpenPak yet, because compatibility testing is still pending, so we are not promising online rooms or matches until that work is finished. This page will say so when the first online results are in.",
+  "footer": "OpenPak Monopoly — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

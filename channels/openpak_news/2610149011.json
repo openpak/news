@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149011,
+  "title": "Wii U: sign-in and friends are built, console tests are next",
+  "body": "The Wii U network is built on the server side. Sign-in, identity, friends, friend requests and friend notifications already run on OpenPak, using the same account you use on the website. Several Wii U titles are in beta testing and fifteen more can be requested from the catalogue. The console side of sign-in is still being proven on real hardware, so we are not yet claiming a finished console connection. Cloud saves and SpotPass-style downloads are not available yet.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "orbit"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "news_id": 2610140071,
+  "title": "Dinkum: room-code co-op is playable on OpenPak",
+  "body": "Dinkum now plays online on OpenPak. A host on an emulator and a real Switch have joined each other's towns by room code, in both directions. Friend-list search and invites are still being built, so for now you join a friend by sharing a room code. Dinkum is a cozy survival life sim from No More Robots, and online play is being checked further as the rest of the friend features land.",
+  "footer": "OpenPak Dinkum — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": ["en-GB", "en-US"],
+  "lifetime_days": 30,
+  "art": {"motif": "pad"}
+}

@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149013,
+  "title": "Wii: the service is live, and games are in beta testing",
+  "body": "The Wii now has a network on OpenPak. Our service answers the Nintendo Wi-Fi Connection-style requests the original Wii games make, covering login, downloadable content and game records. The Dolphin build can point a Wii at it, and thirty-two Wii titles are in beta testing. Wii online play is still being checked game by game, so expect rough edges. The Wii has no friend list or push notifications on its original system, and OpenPak will not invent them.",
+  "footer": "OpenPak Networks — built in the open.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "relay"
+  }
+}

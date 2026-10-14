@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140271,
+  "title": "Risk of Rain Returns: next on our online list",
+  "body": "Risk of Rain Returns is not running on OpenPak's online services yet. We are preparing them for the game's Switch version, and it has no OpenPak online features to test until that work is done. Updates on it will appear in this channel.",
+  "footer": "OpenPak Risk of Rain Returns — in testing, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

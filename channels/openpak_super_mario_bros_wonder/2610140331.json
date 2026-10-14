@@ -1,0 +1,15 @@
+{
+  "news_id": 2610140331,
+  "title": "Super Mario Bros. Wonder's online service is up on OpenPak",
+  "body": "Super Mario Bros. Wonder's online service is now running on OpenPak, with the sign-in, friends and game session pieces in place. The console needs a small client patch before online play will work. Nothing about the game's online features has been confirmed on hardware yet, so testing is ongoing.",
+  "footer": "OpenPak Super Mario Bros. Wonder — playable, not promised.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}
