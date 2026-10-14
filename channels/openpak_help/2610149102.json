@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149102,
+  "title": "Add friends and send invitations",
+  "body": "Friends work through your friend code. Search for a friend's code on your console, send the request, and they accept it on theirs; the friendship is then recorded on your OpenPak account, and each of you should see the other. We are still checking that every console's own friend list screen shows new friends straight away, so if it looks empty, tell us. Invitations come from inside a game that supports them: pick friends, send, and they get a pop-up and an entry in their invitation inbox, even if their console was off when you sent it. Invitations expire after a while, and a user who has blocked you cannot be invited by you. Getting an invitation and actually joining the game are separate steps, and joining is tested game by game, so it may not work in every title yet.",
+  "footer": "OpenPak Help \u2014 here when you need it.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "pad"
+  }
+}

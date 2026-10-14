@@ -91,6 +91,21 @@
       "reason": "superseded by a current per-game post and the game's own channel"
     },
     {
+      "topic_id": "openpak_help",
+      "news_id": 2609100301,
+      "reason": "old build-test post about how News works; replaced by useful posts"
+    },
+    {
+      "topic_id": "openpak_help",
+      "news_id": 2609100302,
+      "reason": "old build-test post about how News works; replaced by useful posts"
+    },
+    {
+      "topic_id": "openpak_help",
+      "news_id": 2609100303,
+      "reason": "old build-test post about how News works; replaced by useful posts"
+    },
+    {
       "topic_id": "openpak_news",
       "news_id": 2609100001,
       "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
@@ -119,6 +134,21 @@
       "topic_id": "openpak_news",
       "news_id": 2609110005,
       "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_workshop",
+      "news_id": 2609100201,
+      "reason": "old build-test post about how News works; replaced by useful posts"
+    },
+    {
+      "topic_id": "openpak_workshop",
+      "news_id": 2609100202,
+      "reason": "old build-test post about how News works; replaced by useful posts"
+    },
+    {
+      "topic_id": "openpak_workshop",
+      "news_id": 2609100203,
+      "reason": "old build-test post about how News works; replaced by useful posts"
     }
   ]
 }

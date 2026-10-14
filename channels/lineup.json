@@ -4,7 +4,7 @@
       "topic_id": "openpak_news",
       "name": "OpenPak News",
       "publisher": "OpenPak",
-      "description": "Announcements and milestones from the OpenPak network.",
+      "description": "Nintendo Switch news from the OpenPak network.",
       "important": false,
       "icon": {
         "motif": "mark"
@@ -22,9 +22,9 @@
     },
     {
       "topic_id": "openpak_workshop",
-      "name": "OpenPak Workshop",
+      "name": "OpenPak Network",
       "publisher": "OpenPak",
-      "description": "How OpenPak works: development notes from the team.",
+      "description": "General news about the OpenPak networks, emulators and platforms.",
       "important": false,
       "icon": {
         "motif": "mark-gear"

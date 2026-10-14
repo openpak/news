@@ -1,9 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-<defs><linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#b45309"/></linearGradient></defs>
-<rect width="512" height="512" rx="0" fill="url(#bg)"/>
-<circle cx="236" cy="236" r="150" stroke="white" stroke-width="26" fill="none"/>
-<path d="M136 236c0-55 45-100 100-100s100 45 100 100-45 100-100 100" stroke="white" stroke-width="26" stroke-linecap="round" fill="none"/>
-<circle cx="236" cy="236" r="34" fill="white"/>
-<circle cx="390" cy="390" r="82" fill="white"/>
-<g transform="translate(390 390) scale(1.15)"><circle r="30" fill="#b45309"/><path d="M-10-8c0-14 20-14 20 0 0 10-10 10-10 20" stroke="white" stroke-width="8" stroke-linecap="round" fill="none"/><circle cy="22" r="5" fill="white"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#c2410c"/></linearGradient></defs>
+<rect width="512" height="512" fill="url(#bg)"/>
+<mask id="m"><rect width="512" height="512" fill="white"/><circle cx="256" cy="256" r="84" fill="black"/></mask>
+<g mask="url(#m)"><circle cx="256" cy="256" r="178" fill="white"/><g stroke="#c2410c" stroke-width="44"><path d="M130 130 L190 190"/><path d="M382 130 L322 190"/><path d="M130 382 L190 322"/><path d="M382 382 L322 322"/></g></g>
+<g transform="translate(446 446)" opacity="0.95"><circle r="38" fill="white"/><circle r="26" fill="none" stroke="#c2410c" stroke-width="7"/><path d="M-16 0a16 16 0 0 1 16-16a16 16 0 0 1 16 16a16 16 0 0 1-16 16" fill="none" stroke="#c2410c" stroke-width="7" stroke-linecap="round"/><circle r="6" fill="#c2410c"/></g>
 </svg>

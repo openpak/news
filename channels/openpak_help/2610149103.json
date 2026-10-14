@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149103,
+  "title": "Which games work, and how we know",
+  "body": "On the Titles page every game carries a status. Live games are playable now, and beta means a server exists while testing continues. Alpha means we run a server and are still building it. Requestable means no server yet: sign in and use Request a game to vote for it. Not feasible means we cannot do it. The compatibility grid is driven by real playtime, not opinions. A cell turns green once someone plays 15 minutes in one session, or all players together reach 30 minutes. If playtime and failure reports both exist, the cell shows amber and we investigate. A game merely launching proves nothing about online play, so we wait for time actually played. Support varies by game and by feature, and a green cell is evidence, not a promise.",
+  "footer": "OpenPak Help — here when you need it.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "podium"
+  }
+}

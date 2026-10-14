@@ -1,0 +1,15 @@
+{
+  "news_id": 2610149101,
+  "title": "Link your Switch or Harbor to OpenPak",
+  "body": "Linking ties your console to your OpenPak account, and it takes about a minute. You need your OpenPak account (e-mail and password), a phone with a camera, and your console on OpenPak DNS. On the console, open the OpenPak sign-in page: it shows a QR code. Scan it with your phone and sign in. The console then reveals a six-digit code, shown like 123 456. Type it into the phone, then approve the link on the console with your controller. The approval is deliberate: scanning proves you have a phone, not that you are holding that console. Codes last ten minutes and work once, and ten wrong guesses earns a ten-minute wait. Harbor, our Switch emulator, is being built around the same OpenPak accounts, but support varies by title and we are still testing it, so treat the console steps above as the verified route.",
+  "footer": "OpenPak Help \u2014 here when you need it.",
+  "language": "en-GB",
+  "supported_languages": [
+    "en-GB",
+    "en-US"
+  ],
+  "lifetime_days": 30,
+  "art": {
+    "motif": "question"
+  }
+}
