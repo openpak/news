@@ -1,3 +1,124 @@
 {
-  "retired": []
+  "retired": [
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609100101,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609100102,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110101,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110102,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110103,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110104,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110105,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110106,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110107,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110108,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110109,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110110,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110111,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110112,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110113,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110114,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110115,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_games",
+      "news_id": 2609110116,
+      "reason": "superseded by a current per-game post and the game's own channel"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609100001,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609100002,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609110002,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609110003,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609110004,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    },
+    {
+      "topic_id": "openpak_news",
+      "news_id": 2609110005,
+      "reason": "superseded by the 2026-10-14 network posts; launch-era status out of date"
+    }
+  ]
 }
