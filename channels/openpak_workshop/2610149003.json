@@ -1,7 +1,7 @@
 {
   "news_id": 2610149003,
   "title": "Pier: the start of OpenPak on PlayStation 3",
-  "body": "Pier is OpenPak's PlayStation 3 emulator, built on RPCS3, and it marks the start of OpenPak's PS3 integration. The aim is to run the console's own firmware and XMB menus against an OpenPak network instead of Sony's, the way Harbor does for the Switch. It is at the very beginning: the base is chosen and the plan is on file, and the network it will pair with is still to be written. Pier is not playable online yet, and we will post here as it moves forward.",
+  "body": "Pier is OpenPak's PlayStation 3 emulator, built on RPCS3, and it marks the start of OpenPak's PS3 integration. The aim is to run the console's own firmware and XMB menus against an OpenPak network instead of Sony's, the way Harbor does for the Switch. It is early: our build already shows Sony's XMB, and the sign-in screen appears, but the OpenPak network it will pair with is only just started. Pier is not playable online yet, and we will post here as it moves forward.",
   "footer": "OpenPak Networks — built in the open.",
   "language": "en-GB",
   "supported_languages": [
