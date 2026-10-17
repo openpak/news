@@ -1,0 +1,6 @@
+FROM scratch
+COPY bcatserve /bcatserve
+COPY openpak-bcat-public.pem /bcat-public.pem
+USER 65532:65532
+EXPOSE 20044
+ENTRYPOINT ["/bcatserve"]

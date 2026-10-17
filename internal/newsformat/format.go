@@ -76,6 +76,14 @@ func pack(w io.Writer, v any) error {
 		return writeBytes(w, []byte{0xc2})
 	case int:
 		return pack(w, int64(x))
+	case uint64:
+		if x <= uint64(^uint64(0)>>1) {
+			return pack(w, int64(x))
+		}
+		b := make([]byte, 9)
+		b[0] = 0xcf
+		binary.BigEndian.PutUint64(b[1:], x)
+		return writeBytes(w, b)
 	case int64:
 		if x >= -32 && x <= 127 {
 			return writeBytes(w, []byte{byte(x)})

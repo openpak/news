@@ -1,5 +1,21 @@
 # news
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
+**Game BCAT (2026-10-12):** one shared dataset service now serves Harbor's
+public JSON/file API through the website and native signed game BCAT through
+nx-baas. Splatoon 2 is the first published dataset; more titles use the same
+per-title contract. Harbor lobby entry and Regular Battle search were tested;
+native 23.0.1 console acceptance still needs a hardware test. See the
+[shared native service](docs/native-game-bcat.md) and
+[dataset/deployment runbook](docs/emulator-bcat-delivery.md).
+
 **Current deployment (2026-09-10):** owner-authorized v006/cdn-v003 now serves four channels, populated archives, twelve summaries and linked full articles. Host and public HTTPS verification pass; native rendering and automatic subscription delivery remain pending. See [current delivery, evidence and rollback](docs/native-news-article-delivery.md). Earlier empty-archive/preparation statements below are historical.
 
 **Server-side authoring (2026-09-23, committed, not deployed):** `newscdn -data`
@@ -90,6 +106,12 @@ Read API (public, website / apps / title servers, NB-07):
 
 Emulator delivery (NB-05, the Switch channel's live surface; mounted by
 the adapter on its emulator API, ports.md 20070, or served standalone):
+
+`cmd/bcatserve` can also serve validated operator-supplied filesystem
+snapshots without the content database. The website's `BCAT_URL` relay
+keeps these routes at Harbor's configured origin. See the
+[delivery runbook](docs/emulator-bcat-delivery.md), including the separate
+real-console requirements.
 
 - `GET /api/emulator/v1/bcat/titles` — titles with served datasets
 - `GET /api/emulator/v1/bcat/titles/<title>` — delivery manifest
@@ -214,14 +236,14 @@ window covering now are served.
 
 ## Adapter relationship
 
-The Switch adapter hosts the emulator delivery routes on ports.md 20070 by
-mounting the same package (`render/switchbcat`):
+An adapter can host the emulator delivery routes on ports.md 20070 by
+mounting the same package (`render/switchbcat`) with the full route path:
 
 ```go
 import "github.com/openpak/news/render/switchbcat"
 
 svc := switchbcat.NewService(reader, publicBaseURL, logger)
-mux.Handle("/api/emulator/v1/bcat/", http.StripPrefix("/api/emulator/v1/bcat", svc.Mux()))
+mux.Handle("/api/emulator/v1/bcat/", svc.Mux())
 // Renderer (NB-08): svc.Renderer() renders the delivery manifest per title.
 ```
 

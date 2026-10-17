@@ -20,9 +20,10 @@ import (
 const HeaderSize = 0x120
 const MaxPayload = 4 << 20
 
-// Encode signs the plaintext with RSA PKCS#1 v1.5/SHA-256, then encrypts it
+// Encode signs the plaintext with RSA PKCS#1 v1.5/SHA-256, then optionally encrypts it
 // with AES-CTR. aesKey must already have been derived for the target title
-// and secret index. The IV starts at payload offset zero, excluding the header.
+// and secret index. A nil aesKey selects the documented plaintext crypto type 0.
+// The IV starts at payload offset zero, excluding the header.
 func Encode(plaintext, aesKey []byte, secretIndex byte, signingKey *rsa.PrivateKey) ([]byte, error) {
 	if len(plaintext) == 0 || len(plaintext) > MaxPayload {
 		return nil, errors.New("payload size outside supported range")
@@ -36,15 +37,23 @@ func Encode(plaintext, aesKey []byte, secretIndex byte, signingKey *rsa.PrivateK
 	if err := signingKey.Validate(); err != nil {
 		return nil, errors.New("invalid RSA signing key")
 	}
-	block, err := aes.NewCipher(aesKey)
-	if err != nil {
-		return nil, err
+	var block cipher.Block
+	var cryptoType byte
+	if aesKey != nil {
+		var err error
+		block, err = aes.NewCipher(aesKey)
+		if err != nil {
+			return nil, err
+		}
+		cryptoType = byte((len(aesKey)-16)/8 + 1)
 	}
 	out := make([]byte, HeaderSize+len(plaintext))
 	copy(out, "bcat")
-	out[4], out[5], out[6], out[7] = 1, byte((len(aesKey)-16)/8+1), 1, secretIndex
-	if _, err := io.ReadFull(rand.Reader, out[0x10:0x20]); err != nil {
-		return nil, err
+	out[4], out[5], out[6], out[7] = 1, cryptoType, 1, secretIndex
+	if block != nil {
+		if _, err := io.ReadFull(rand.Reader, out[0x10:0x20]); err != nil {
+			return nil, err
+		}
 	}
 	digest := sha256.Sum256(plaintext)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, signingKey, crypto.SHA256, digest[:])
@@ -52,7 +61,11 @@ func Encode(plaintext, aesKey []byte, secretIndex byte, signingKey *rsa.PrivateK
 		return nil, err
 	}
 	copy(out[0x20:HeaderSize], signature)
-	cipher.NewCTR(block, out[0x10:0x20]).XORKeyStream(out[HeaderSize:], plaintext)
+	if block == nil {
+		copy(out[HeaderSize:], plaintext)
+	} else {
+		cipher.NewCTR(block, out[0x10:0x20]).XORKeyStream(out[HeaderSize:], plaintext)
+	}
 	return out, nil
 }
 
@@ -65,16 +78,24 @@ func Verify(container, aesKey []byte, pub *rsa.PublicKey) ([]byte, error) {
 	if len(container) <= HeaderSize || len(container) > HeaderSize+MaxPayload {
 		return nil, errors.New("container size outside supported range")
 	}
+	var cryptoType byte
+	if aesKey != nil {
+		cryptoType = byte((len(aesKey)-16)/8 + 1)
+	}
 	if string(container[:4]) != "bcat" || container[4] != 1 || container[6] != 1 || container[7] > 15 ||
-		container[5] != byte((len(aesKey)-16)/8+1) {
+		container[5] != cryptoType {
 		return nil, errors.New("invalid container header")
 	}
-	block, err := aes.NewCipher(aesKey)
-	if err != nil {
-		return nil, err
-	}
 	plain := make([]byte, len(container)-HeaderSize)
-	cipher.NewCTR(block, container[0x10:0x20]).XORKeyStream(plain, container[HeaderSize:])
+	if aesKey == nil {
+		copy(plain, container[HeaderSize:])
+	} else {
+		block, err := aes.NewCipher(aesKey)
+		if err != nil {
+			return nil, err
+		}
+		cipher.NewCTR(block, container[0x10:0x20]).XORKeyStream(plain, container[HeaderSize:])
+	}
 	digest := sha256.Sum256(plain)
 	if err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, digest[:], container[0x20:HeaderSize]); err != nil {
 		return nil, errors.New("signature does not verify")

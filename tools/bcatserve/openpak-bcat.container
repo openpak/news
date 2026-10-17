@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenPak emulator BCAT delivery
+
+[Container]
+Image=localhost/openpak-bcat:validated
+ContainerName=openpak-bcat
+Network=openpak.network
+PublishPort=127.0.0.1:20044:20044
+Volume=%h/openpak/deploy/bcat/datasets:/datasets:ro
+Volume=%h/openpak/deploy/bcat/secrets/signing.pem:/run/secrets/bcat-signing.pem:ro
+Exec=-root /datasets -listen :20044 -signing-key /run/secrets/bcat-signing.pem -verify-key /bcat-public.pem
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

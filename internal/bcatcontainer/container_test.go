@@ -69,3 +69,26 @@ func TestEncode(t *testing.T) {
 		}
 	}
 }
+
+func TestSignedPlaintext(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := []byte("native BCAT payload")
+	container, err := Encode(plain, nil, 0, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if container[5] != 0 || !bytes.Equal(container[HeaderSize:], plain) {
+		t.Fatal("invalid plaintext crypto framing")
+	}
+	decoded, err := Verify(container, nil, &key.PublicKey)
+	if err != nil || !bytes.Equal(decoded, plain) {
+		t.Fatalf("verification: %v", err)
+	}
+	container[HeaderSize] ^= 1
+	if _, err := Verify(container, nil, &key.PublicKey); err == nil {
+		t.Fatal("accepted corrupted plaintext")
+	}
+}

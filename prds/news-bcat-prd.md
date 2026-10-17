@@ -1,5 +1,13 @@
 # OpenPak News PRD (platform-neutral content, per-console delivery) and Switch BCAT
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 Latest status (2026-09-09, supersedes experiment gates in the historical updates
 below): v0.19 on the owner's patched HOS 22.5.0 console successfully downloaded
 and decoded the signed catalog (155 bytes). Both the retail-key patch and a
@@ -97,10 +105,7 @@ for news (the apps' push is for social events only).
 
 ## 6. Independent implementation rules (apply verbatim)
 
-- Every earlier network repository is source-available; its noncompete clause forbids
-  using that code in a competing product. earlier code, routes, schemas and prose are
-  **evidence of observable behaviour only**, never implementation input. Do not copy,
-  translate, or structurally mirror them. Cite them as evidence, then design from scratch.
+- OpenPak servers are AGPL-3.0-only and OpenPak-authored.
 - Go 1.26, module `github.com/openpak/<repo>`, AGPL-3.0-only, `LICENSE` verbatim from
   gnu.org. Server-rendered templates and minimal browser JavaScript for web surfaces.
   Native mobile code is the recorded non-Go exception.

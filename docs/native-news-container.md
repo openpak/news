@@ -354,3 +354,14 @@ and reload user systemd if the experiment should also remain disabled at boot.
 The experiment TLS certificate expires after 30 days and requires renewal if
 retained. Console rollback remains **L** in probe v0.15 followed by an
 Atmosphere reboot, as described in the patch README.
+
+### TLS renewal — 2026-10-12
+
+During the Splatoon 3 BCAT investigation, the retained topics-server leaf was found expired
+(October 9), with nx-baas logging failed upstream verification for OpenPak News lists.
+The leaf and chain were renewed using the existing OpenPak CA, CSR and server key; public
+TLS hostname/chain verification now succeeds, and the adapter's News relay returns HTTP 200.
+The renewed leaf expires October 12, 2027. Only the News experiment service was restarted;
+content-signing keys, content and console patches were not changed. Old public certificates
+are backed up in the remote TLS directory under `*.before-20261012-132534`.
+This repairs a confirmed TLS defect; Splatoon 3 lobby success remains unconfirmed.

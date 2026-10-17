@@ -1,5 +1,13 @@
 # NB-00 review (owner-side, 2026-09-07) — the go/no-go must be reversed for the console
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 `spike-nb00.md` concludes "TLS is the verification boundary" and marks console News and
 per-title BCAT as GO. Two public sources contradict that, and the second is decisive.
 

@@ -6,6 +6,16 @@ import (
 	"testing"
 )
 
+func TestUnsignedBCATDataIDKeepsAllBits(t *testing.T) {
+	encoded, err := Encode(uint64(0xffffffffffffffff))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(encoded, []byte{0xcf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}) {
+		t.Fatalf("truncated unsigned data ID: %x", encoded)
+	}
+}
+
 func mustEncode(t *testing.T, v any) []byte {
 	t.Helper()
 	b, err := Encode(v)
