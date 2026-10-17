@@ -79,7 +79,10 @@ type Config struct {
 	Fallback  http.Handler // the CDN's unknown-route fallback
 	Switch    *newsexperiment.Switch
 
-	Push   *Pusher // nil = pushing disabled
+	Push *Pusher // nil = pushing disabled
+	// Bcat hands signing, the console tree and the push to nx-bcat (bcat.go); nil = this
+	// process does them, as before the split.
+	Bcat   *BcatSync
 	Logger *slog.Logger
 	Now    func() time.Time
 }
@@ -215,6 +218,9 @@ func (s *Service) saveState() error {
 
 // serveInitial loads the served build, else the static tree.
 func (s *Service) serveInitial() error {
+	if s.cfg.Bcat != nil {
+		return nil
+	}
 	if n := s.state.Serving; n != 0 {
 		h, err := newsexperiment.Handler(filepath.Join(s.buildDir(n), "signed"), s.log, s.cfg.Fallback)
 		if err == nil {

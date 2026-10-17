@@ -93,9 +93,13 @@ func (s *Service) fail(op string, err error) {
 }
 
 func (s *Service) publish(note string) (*PublishResult, error) {
-	signing, aesKey, err := s.loadKeys()
-	if err != nil {
-		return nil, err
+	var signing *rsa.PrivateKey
+	var aesKey []byte
+	if s.cfg.Bcat == nil { // with nx-bcat the keys are its, not ours
+		var err error
+		if signing, aesKey, err = s.loadKeys(); err != nil {
+			return nil, err
+		}
 	}
 	now := s.cfg.Now().UTC().Truncate(time.Second)
 	n := s.state.NextBuild
@@ -119,13 +123,14 @@ func (s *Service) publish(note string) (*PublishResult, error) {
 	if err != nil {
 		return nil, errf(http.StatusUnprocessableEntity, "build: %v", err)
 	}
-	count, err := signTree(seedDir, signedDir, aesKey, s.cfg.SecretIndex, signing, s.cfg.VerifyKey)
-	if err != nil {
-		return nil, errf(http.StatusInternalServerError, "sign: %v", err)
-	}
-	h, err := newsexperiment.Handler(signedDir, s.log, s.cfg.Fallback)
-	if err != nil {
-		return nil, errf(http.StatusInternalServerError, "load signed tree: %v", err)
+	count, h := 0, http.Handler(nil)
+	if s.cfg.Bcat == nil {
+		if count, err = signTree(seedDir, signedDir, aesKey, s.cfg.SecretIndex, signing, s.cfg.VerifyKey); err != nil {
+			return nil, errf(http.StatusInternalServerError, "sign: %v", err)
+		}
+		if h, err = newsexperiment.Handler(signedDir, s.log, s.cfg.Fallback); err != nil {
+			return nil, errf(http.StatusInternalServerError, "load signed tree: %v", err)
+		}
 	}
 	// Persist the first-publish stamps, so publication times stay stable.
 	if err := s.stampPublished(now); err != nil {
@@ -149,7 +154,9 @@ func (s *Service) publish(note string) (*PublishResult, error) {
 		return nil, err
 	}
 	ok = true
-	s.cfg.Switch.Store(h)
+	if h != nil {
+		s.cfg.Switch.Store(h)
+	}
 	s.log.Info("news admin: published", "build", n, "revision", s.state.Revision, "containers", count, "changed", changed)
 	s.prune()
 	return &PublishResult{Build: n, Revision: s.state.Revision, PublishedAt: now.Format(time.RFC3339),
@@ -209,9 +216,12 @@ func (s *Service) rollback(target int) (*PublishResult, error) {
 	if target == s.state.Serving {
 		return nil, errf(http.StatusConflict, "build %d is already served", target)
 	}
-	h, err := newsexperiment.Handler(filepath.Join(s.buildDir(target), "signed"), s.log, s.cfg.Fallback)
-	if err != nil {
-		return nil, errf(http.StatusInternalServerError, "load build %d: %v", target, err)
+	var h http.Handler
+	if s.cfg.Bcat == nil {
+		var err error
+		if h, err = newsexperiment.Handler(filepath.Join(s.buildDir(target), "signed"), s.log, s.cfg.Fallback); err != nil {
+			return nil, errf(http.StatusInternalServerError, "load build %d: %v", target, err)
+		}
 	}
 	var man newsseed.Manifest
 	raw, err := os.ReadFile(filepath.Join(s.buildDir(target), "seed", "manifest.json"))
@@ -234,7 +244,9 @@ func (s *Service) rollback(target int) (*PublishResult, error) {
 	if err := s.saveState(); err != nil {
 		return nil, err
 	}
-	s.cfg.Switch.Store(h)
+	if h != nil {
+		s.cfg.Switch.Store(h)
+	}
 	s.log.Info("news admin: rolled back", "build", target, "revision", s.state.Revision, "changed", changed)
 	articles := 0
 	for _, ch := range man.Channels {
@@ -463,6 +475,9 @@ func (p *Pusher) push(ctx context.Context, topic string, revision int64) PushRes
 // queuePush pushes every changed topic in the background; failures are
 // logged and recorded, never fatal. Caller holds s.mu.
 func (s *Service) queuePush(topics []string, revision int64) string {
+	if s.cfg.Bcat != nil {
+		return s.queueSync()
+	}
 	if s.cfg.Push == nil || s.cfg.Push.URL == "" {
 		return "disabled"
 	}

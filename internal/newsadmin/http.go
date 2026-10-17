@@ -52,6 +52,12 @@ func (s *Service) Handler(key string) http.Handler {
 	}
 
 	route("GET /admin/v1/status", locked(func(r *http.Request) (any, int, error) { return s.status(), 200, nil }))
+	route("GET /admin/v1/bcat/current", locked(func(r *http.Request) (any, int, error) { return s.bcatCurrent(), 200, nil }))
+	route("GET /admin/v1/bcat/builds/{n}/seed.tar", func(w http.ResponseWriter, r *http.Request) (any, int, error) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return nil, 0, s.writeSeedTar(w, r.PathValue("n"))
+	})
 	route("GET /admin/v1/motifs", func(http.ResponseWriter, *http.Request) (any, int, error) {
 		return map[string][]string{"icon": newsseed.IconMotifs(), "scene": newsseed.SceneMotifs()}, 200, nil
 	})
@@ -237,8 +243,8 @@ func (s *Service) status() statusView {
 	}
 	v.Serving.Since = s.state.ServingSince
 	v.Revision = s.state.Revision
-	v.SigningConfigured = s.keysConfigured()
-	v.PushConfigured = s.cfg.Push != nil && s.cfg.Push.URL != ""
+	v.SigningConfigured = s.keysConfigured() || s.cfg.Bcat != nil
+	v.PushConfigured = s.cfg.Bcat != nil || (s.cfg.Push != nil && s.cfg.Push.URL != "")
 	v.LastPublish, v.LastError = s.state.LastPublish, s.state.LastError
 	v.Pushes = append([]PushResult{}, s.state.Pushes...)
 	v.Builds = []buildInfo{}

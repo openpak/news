@@ -130,6 +130,9 @@ func startAdmin(data, static, importDir string, importShots bool, importManifest
 		wait, _ := strconv.Atoi(os.Getenv("NX_BAAS_PUSH_WAIT_RANGE"))
 		cfg.Push = &newsadmin.Pusher{URL: u, Key: os.Getenv("NX_BAAS_INTERNAL_KEY"), WaitRange: wait}
 	}
+	if u := os.Getenv("NX_BCAT_SYNC_URL"); u != "" {
+		cfg.Bcat = &newsadmin.BcatSync{URL: u, Key: os.Getenv("NX_INTERNAL_KEY")}
+	}
 	svc, err := newsadmin.New(cfg)
 	if err != nil {
 		log.Fatal(err)
@@ -138,7 +141,7 @@ func startAdmin(data, static, importDir string, importShots bool, importManifest
 	if adminKey == "" {
 		slog.Warn("NEWS_ADMIN_KEY is not set: the admin API answers 503 to everything")
 	}
-	if cfg.SigningKeyPath == "" || cfg.AESKeyPath == "" {
+	if (cfg.SigningKeyPath == "" || cfg.AESKeyPath == "") && cfg.Bcat == nil {
 		slog.Warn("NEWS_SIGNING_KEY / NEWS_AES_KEY not set: publishing is disabled")
 	}
 	admin := &http.Server{Addr: listen, Handler: svc.Handler(adminKey), ReadHeaderTimeout: 5 * time.Second,
