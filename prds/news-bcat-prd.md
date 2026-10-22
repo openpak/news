@@ -62,7 +62,7 @@ delivered through every channel a player has. Consoles with a native channel get
 (Switch News via BCAT topics; Wii U/3DS via SpotPass/BOSS later); every player also sees it
 on the website, in the companion apps, and in-game where a title server can show a message
 of the day. Separately, Switch titles receive their BCAT data (schedules, seasonal content)
-from OpenPak instead of a dead Nintendo endpoint. Reference has neither; both are new.
+from OpenPak instead of a dead Nintendo endpoint. Both are new.
 
 Design rule: content, targeting and authoring are platform-neutral; each console channel is
 a renderer package. Per-title BCAT data is title data, Switch-only by nature, and lives with
@@ -78,11 +78,11 @@ agent wires the hostnames (Contract request NB-1). Do not edit nx-baas.
 
 - Console today (evidence): `GET bcat-topics-lp1.cdn.nintendo.net/api/nx/v1/titles/<title>/
   topics?c[]=FR&c[]=GB` on title launch (seen for Outbound and a system title); we 404.
-  the third-party setup redirects all three bcat hosts (hosts-file evidence only).
+  A hosts file can redirect all three bcat hosts (hosts-file evidence only).
 - Public documentation: Kinnay wiki BCAT-Servers (bcat-list, bcat-topics, the topics route).
   The News NEX protocol page is Wii U-era and not this.
-- Reference (evidence only) serves cached per-title BCAT files to emulators and copies them to
-  LayeredFS on console via the third-party setup; it does not serve News.
+- Earlier research notes (evidence only): cached per-title BCAT files can be served to emulators and
+  copied to LayeredFS on console; that route does not serve News.
 
 ## 4. Users and journeys
 
@@ -193,5 +193,5 @@ apps' news screens consume `content` only.
 
 ## 12. Evidence references
 
-Console log lines for `bcat-topics-lp1` (2026-09-07); the third-party setup hosts list (redirect evidence);
+Console log lines for `bcat-topics-lp1` (2026-09-07); hosts-file redirect evidence;
 Kinnay BCAT-Servers page.

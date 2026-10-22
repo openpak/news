@@ -114,9 +114,9 @@ prevented the game from reaching socket/SSL activity. The website
 returned generic 404 for both the index and title manifest. Production
 was running the native News CDN, not the per-title dataset renderer.
 
-With the owner's explicit authorization, a public prior third-party reference BCAT
+With the owner's explicit authorization, a public third-party BCAT
 package was downloaded as a local test fixture. Seven unmodified game
-data files were installed in the previously empty HLE cache; no prior reference
+data files were installed in the previously empty HLE cache; no third-party
 implementation code was copied. All four BYAML files parsed,
 and both VS and co-op schedules covered the test date. The game then
 read the files, authenticated with OpenPak, entered the lobby and
@@ -126,7 +126,7 @@ long-term Vulkan stability remain unverified.
 Detailed archive provenance, hashes, captured screenshots and phone
 logs are owner-local under
 `scratch/harbor-eden/tmp/splatoon2-rog3-20261012/lobby-network/bcat-package/`.
-The package contains prior-reference-stack-authored festival strings as
+The package contains third-party-authored festival strings as
 well as binary game assets; it is not labeled OpenPak-authored data or
 bundled with this service. Hosting a dataset is a separate operator
 action from deploying this code.

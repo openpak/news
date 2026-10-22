@@ -36,7 +36,7 @@ per-title BCAT as GO. Two public sources contradict that, and the second is deci
 | --- | --- | --- |
 | Console News (topics) | **NO-GO** without Nintendo's private key or a console-side patch; the project refuses patches | 1, 2, 3 |
 | Console per-title BCAT via the bcat hosts | **NO-GO**, same reason | 2 |
-| Per-title data on console via LayeredFS placement (setup homebrew writes files to the SD; bcat delivery cache not involved) | **GO**, outside this repo's console handlers | the third-party setup precedent (hosts/LayeredFS evidence) |
+| Per-title data on console via LayeredFS placement (setup homebrew writes files to the SD; bcat delivery cache not involved) | **GO**, outside this repo's console handlers | hosts/LayeredFS evidence |
 | Emulator delivery (NB-05) | **GO** | 4 |
 | Website / apps / title-server read API (NB-07) | **GO** | independent of consoles |
 
