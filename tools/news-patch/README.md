@@ -67,6 +67,6 @@ The NRO compiles with warnings treated as errors.
 
 Firmware and extraction keys remain outside the repository. The matching
 private signing key is owner-local at
-`~/openpak-news-private/openpak-bcat-signing.pem` (mode 0600).
+`~/REPOS/Openpak/.secrets/news/openpak-bcat-signing.pem` (mode 0600).
 Back it up privately: replacing it requires a new public key and patch.
 Never distribute it in an NRO, SD archive or source repository.

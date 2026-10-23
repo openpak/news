@@ -99,7 +99,7 @@ For full rollback remove only the experimental router/service entries from the
 current Traefik file and stop the experiment; do not restore a whole old config
 over changes from other agents. Deployment evidence is in the container runbook.
 
-Owner-private assets: `~/openpak-news-private/` contains the existing
+Owner-private assets: `~/REPOS/Openpak/.secrets/news/` contains the existing
 RSA signing key, prederived AES key, firmware and analysis. These are not samples
 to distribute. `bcat-memory.bin` and `qlaunch-memory.bin` use mapped addresses;
 uncompressed NSOs retain headers. The tested IPS offsets add 0x100 to the mapped

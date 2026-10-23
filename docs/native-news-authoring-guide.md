@@ -113,7 +113,7 @@ From the `news` repository, after building the example:
 ```sh
 sample_dir=/tmp/openpak-news-sample
 signed_dir=/tmp/openpak-news-sample-signed
-news_private=~/openpak-news-private
+news_private=~/REPOS/Openpak/.secrets/news
 mkdir "$signed_dir"
 for name in catalog detail archives article; do
   go run ./cmd/newscontainer \

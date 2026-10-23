@@ -157,8 +157,8 @@ images the console has accepted in every rendering test.
 ```sh
 tools/news-cdn/sign-seed.sh -i /tmp/openpak-news-seed \
   -o /tmp/openpak-news-seed-signed \
-  -k ~/openpak-news-private/openpak-bcat-signing.pem \
-  -a ~/openpak-news-private/news-aes-256-candidate.key
+  -k ~/REPOS/Openpak/.secrets/news/openpak-bcat-signing.pem \
+  -a ~/REPOS/Openpak/.secrets/news/news-aes-256-candidate.key
 ```
 
 The script builds `cmd/newscontainer`, wraps every payload into a BCAT
