@@ -1,9 +1,9 @@
 # Provenance — native News facts
 
 Where each non-obvious fact behind the native News routes and payloads came
-from ([clean-room policy](https://github.com/openpak/docs/blob/main/clean-room-policy.md)). Firmware facts come from
+from ([clean-room policy](https://docs.openpak.org/contributors/clean-room/)). Firmware facts come from
 static analysis of HOS 22.5.0 by the owner, recorded in
-`../docs/switch/native-news-eshop-nso-gap-22.5.0-2026-09-23.md` (the audit
+internal research notes (the audit
 workspace is `~/openpak-firmware-audit-22.5.0`). No decompiled code is
 copied into this repository: only names, values, orders and flows.
 

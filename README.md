@@ -122,7 +122,7 @@ real-console requirements.
 All responses carry `ETag`, `Last-Modified`, `Cache-Control` and answer
 `If-None-Match` / `If-Modified-Since` (NB-06).
 
-Ports follow `../ports.md` block 20040: HTTP `:20040`, gRPC `:20041`,
+Ports follow the port plan (https://docs.openpak.org/contributors/ports/) block 20040: HTTP `:20040`, gRPC `:20041`,
 metrics/pprof `:20042` (`NEWS_HTTP_ADDR`, `NEWS_GRPC_ADDR`,
 `NEWS_METRICS_ADDR`).
 
