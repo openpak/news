@@ -5,16 +5,14 @@ on:
     tags: ['v*.*.*']
   workflow_dispatch:
 
-# Both runner services share one Docker daemon, and this test binds a fixed
-# host port for Postgres. Keep only the newest run so two revisions cannot
-# race for port 23001.
+# Keep only the newest run.
 concurrency:
   group: news-ci
   cancel-in-progress: true
 
 jobs:
   test:
-    runs-on: [self-hosted, linux, podman]
+    runs-on: ubuntu-24.04
     services:
       # ports.md 23001: Postgres for integration tests.
       postgres:
@@ -32,12 +30,6 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v5
-      - name: Scratch in the runner's temp, not the machine's shared /tmp
-        # /tmp is a RAM disk every build on the machine shares; when it filled on
-        # 2026-09-24 a compiler died and a job hung for hours instead of failing.
-        run: |
-          mkdir -p "$RUNNER_TEMP/scratch"
-          echo "TMPDIR=$RUNNER_TEMP/scratch" >> "$GITHUB_ENV"
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
@@ -46,6 +38,3 @@ jobs:
         env:
           NEWS_TEST_DATABASE: postgres://news:secret@localhost:23001/news_test
       - run: go build ./...
-      - name: Clear scratch
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/scratch"
