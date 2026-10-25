@@ -30,8 +30,8 @@ Primary public sources:
   permitted when crypto type is outside 1..3; AES-CTR types are 1..3.
 - [BCAT hosts and list route](https://github.com/kinnay/NintendoClients/wiki/BCAT-Servers).
 
-Owner-local 23.0.1 BCAT analysis, project
-`scratch/harbor-eden/research/g3pctl-news/ghidra/bcat23`:
+Owner-local 23.0.1 BCAT analysis, project private notes:
+(private notes):
 
 - Native list parser's string callback (function containing 0x859c8b8,
   0x859cc34 and 0x859c910) accepts directory `name`, `mode`, `digest` and

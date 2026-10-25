@@ -170,7 +170,7 @@ unchanged; no speculative certificate-bypass patch has been issued.
 ## DNS corrected; native SSL setup still fails
 
 After the corrected installer and reboot, the v0.16 report at epoch
-1788977470 shows DNS matching 145.241.199.19 and successful direct TCP/TLS/HTTP.
+1788977470 shows DNS matching PROD_HOST and successful direct TCP/TLS/HTTP.
 The corresponding server request is logged at 18:10:57 UTC. The native ZL
 request still returns 0x167B with zero decoded bytes and no second handshake.
 Thus correcting the route was necessary but did not resolve native SSL setup;
@@ -197,7 +197,7 @@ The owner's OpenPak setup tool `console/openpak-nro/source/hosts.c` omitted
 managed redirects. The existing enable/disable/reapply tests pass. Re-selecting
 OpenPak with the rebuilt installer rewrites its managed block in both default
 and emuMMC hosts files; reboot is required. It uses the installer-configured
-server address, expected to be 145.241.199.19 for this experiment. This does
+server address, expected to be PROD_HOST for this experiment. This does
 not install or remove the separate News signing-key patch.
 
 Retest ZR after reboot: DNS should match. Then ZL can finally test the signed

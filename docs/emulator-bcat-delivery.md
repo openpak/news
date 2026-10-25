@@ -125,7 +125,7 @@ long-term Vulkan stability remain unverified.
 
 Detailed archive provenance, hashes, captured screenshots and phone
 logs are owner-local under
-`scratch/harbor-eden/tmp/splatoon2-rog3-20261012/lobby-network/bcat-package/`.
+private notes.
 The package contains third-party-authored festival strings as
 well as binary game assets; it is not labeled OpenPak-authored data or
 bundled with this service. Hosting a dataset is a separate operator
