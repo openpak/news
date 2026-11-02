@@ -6,13 +6,18 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/news
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/app ./cmd/news \
+ && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/bcatserve ./cmd/bcatserve \
+ && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/newscdn ./cmd/newscdn
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata \
+RUN apk add --no-cache ca-certificates tzdata libjpeg-turbo-utils \
  && adduser -D -u 65532 -h /app app
 WORKDIR /app
 COPY --from=build /out/app /app/app
+COPY --from=build /out/bcatserve /bcatserve
+COPY --from=build /out/newscdn /newscdn
+COPY internal/newsadmin/openpak-bcat-public.pem /bcat-public.pem
 
 RUN mkdir -p /app/data && chown -R 65532:65532 /app
 # Runs unprivileged: rootless podman maps this uid into the host's subuid range, and every

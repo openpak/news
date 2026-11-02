@@ -81,3 +81,7 @@ curl 'localhost:20040/v1/articles?platform=switch'
 - Tests: unit tests always run; store SQL tests run against
   `NEWS_TEST_DATABASE` (ports.md 23001, wired in CI as a service).
 - CI: `go vet ./...` and `go test -race ./...` green (`.github/workflows/ci.yml`).
+
+## One image, three binaries
+
+The published image (`ghcr.io/openpak/news`) ships `/app/app` (default entrypoint, used by the `openpak-news` quadlet), `/bcatserve` (the `openpak-bcat` quadlet sets `Entrypoint=/bcatserve`) and `/newscdn` (the `openpak-news-experiment` quadlet sets `Entrypoint=/newscdn`). The BCAT verify key is baked in at `/bcat-public.pem`; `newscdn` finds `cjpeg` on the image.

@@ -3,6 +3,10 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.2.6 — 2026-11-02
+
+- The image also ships `/bcatserve`, `/newscdn` (with `cjpeg`) and `/bcat-public.pem`, so the `openpak-bcat` and `openpak-news-experiment` containers run from it. Default entrypoint unchanged.
+
 ## v0.2.5 — 2026-11-02
 
 - Release from main; replaces the hand-built production image.
