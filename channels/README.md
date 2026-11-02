@@ -20,20 +20,7 @@ This is the production-shaped input for the experimental CDN. It respects the
 platform-neutral architecture: the payload shapes live in
 [`internal/newsformat`](../internal/newsformat) (reusable by a future
 content-store renderer), and this seed is file-based authoring until native
-channel contracts exist (none do today — see the
-[handoff](../docs/native-news-agent-handoff.md)).
-
-## Status
-
-**Deployed:** v006/cdn-v003 (publication pinned 2026-09-10T19:13:51Z) serves
-the four-channel catalog, populated archives, twelve summaries and linked
-full articles. See [delivery, evidence and rollback](../docs/native-news-article-delivery.md).
-
-**Local, pending owner review:** the 2026-09-11 artwork rebrand — channel
-icons rebuilt from the official OpenPak mark and per-article scene banners
-(the previous abstract shapes are what v006 currently serves). Built and
-signed locally; not in any image on the server. Deploying it is the next
-image/fixtures round (v007/cdn-v004) using the documented procedure.
+channel contracts exist (none do today).
 
 What hardware has already proven (evidence in
 [`docs/native-news-container.md`](../docs/native-news-container.md) and

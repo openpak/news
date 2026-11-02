@@ -1,7 +1,6 @@
 # Native Switch News: reopened investigation
 
-Current entry point: [creation guide](native-news-authoring-guide.md) and
-[agent handoff](native-news-agent-handoff.md). On 2026-09-09, patched native
+Current entry point: [creation guide](native-news-authoring-guide.md). On 2026-09-09, patched native
 catalog retrieval and decoding succeeded with v0.19. Server v004 subsequently
 added the archive route; channel-page acceptance, subscriptions and automatic
 article delivery remain pending. The local-only status below is historical.

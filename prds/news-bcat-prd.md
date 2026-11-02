@@ -19,7 +19,6 @@ N1 and production NB-1 remain incomplete. No custom sysmodule was introduced.
 
 Agent entry points: [creation guide](../docs/native-news-authoring-guide.md),
 [editable channel/article sample](../examples/native-news/README.md),
-[handoff task](../docs/native-news-agent-handoff.md), and
 [hardware/deployment evidence](../docs/native-news-container.md).
 
 Status: draft for agent assignment (2026-09-07). Starts with a research spike because the

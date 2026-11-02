@@ -37,7 +37,6 @@ go run ./cmd/news
 - [Admin API](docs/admin-api.md)
 - [Emulator BCAT delivery](docs/emulator-bcat-delivery.md)
 - [Native game BCAT](docs/native-game-bcat.md)
-- [Native News agent handoff](docs/native-news-agent-handoff.md)
 - [Native News article delivery](docs/native-news-article-delivery.md)
 - [Native News authoring guide](docs/native-news-authoring-guide.md)
 - [Native News catch-all](docs/native-news-catchall.md)
