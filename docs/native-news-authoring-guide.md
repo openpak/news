@@ -75,7 +75,7 @@ An article can end with a link button, `more`. Set it in the article JSON:
 `game` needs 1–5 title ids, `shop` a query (or title ids), and `browser` an
 https URL of at most 256 bytes. Only the fields you set are emitted. The key
 names are read from 22.5.0 qlaunch; which fields each type uses is inferred
-and unverified on hardware (see [provenance](provenance.md)). The earlier LIST/body-array
+and unverified on hardware (see [console wire facts](protocol.md#console-wire-facts-native-news)). The earlier LIST/body-array
 experiments displayed titles without working body/images; do not treat those
 historical fixtures as the current example. The sample preserves the working
 layout but uses an OpenPak channel ID whose article association is still untested.

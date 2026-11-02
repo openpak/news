@@ -4,7 +4,7 @@
 > below. The News module fetches only the bcat-list and the URLs it names;
 > subscription status 2 (not 1) means subscribed. See
 > [the reception path](#reception-path-in-2250-2026-09-23) at the end and
-> [provenance](provenance.md). The archive/summary sections still describe
+> [console wire facts](protocol.md#console-wire-facts-native-news). The archive/summary sections still describe
 > qlaunch's channel pages correctly.
 
 2026-09-10. Owner authorized deployment. Image **v006** now serves four
@@ -183,7 +183,7 @@ background subscription delivery or persistence through reboot.
 
 ## Reception path in 22.5.0 (2026-09-23)
 
-From the firmware audit (facts and addresses in [provenance](provenance.md)).
+From the firmware audit (facts and addresses in [console wire facts](protocol.md#console-wire-facts-native-news)).
 None of this is tested on hardware yet.
 
 1. The topic is subscribed with status 2: Find Channels' follow, probe v0.22

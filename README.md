@@ -31,9 +31,7 @@ go run ./cmd/news
 ## Docs
 
 - [Protocol](docs/protocol.md)
-- [Evidence](docs/evidence.md)
 - [Deploy](docs/deploy.md)
-- [Notes](docs/notes.md)
 - [Admin API](docs/admin-api.md)
 - [Emulator BCAT delivery](docs/emulator-bcat-delivery.md)
 - [Native game BCAT](docs/native-game-bcat.md)
@@ -45,9 +43,10 @@ go run ./cmd/news
 - [Native News probe 01](docs/native-news-probe-01.md)
 - [Native News reopen](docs/native-news-reopen.md)
 - [NX BCAT split](docs/nx-bcat-split.md)
-- [Provenance](docs/provenance.md)
 - [NB-00 spike](docs/spike-nb00.md)
 - [NB-00 spike review](docs/spike-nb00-review.md)
+
+PRDs: openpak/prds (private)
 
 ## Licence
 
