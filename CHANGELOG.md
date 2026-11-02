@@ -3,6 +3,10 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.2.5 — 2026-11-02
+
+- Release from main; replaces the hand-built production image.
+
 ## v0.2.3 — 2026-10-03
 
 - The decoded copies now include each live article's summary (`<topic>/<id>/summary.plain`, served at `/openpak/v1/local/<topic>/news/<id>/summary`): the firmware's channel page downloads one per tile.
