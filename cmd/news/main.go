@@ -24,6 +24,8 @@ import (
 	"github.com/openpak/news/internal/config"
 	"github.com/openpak/news/internal/content"
 	"github.com/openpak/news/internal/grpcapi"
+	"github.com/openpak/news/internal/grpclog"
+	"github.com/openpak/news/internal/httplog"
 	"github.com/openpak/news/internal/metrics"
 	"github.com/openpak/news/internal/objects"
 	"github.com/openpak/news/internal/store"
@@ -60,7 +62,7 @@ func run() error {
 	st := store.New(pool, objs)
 
 	// Authoring gRPC (operator key required on every call).
-	gs := grpc.NewServer(grpc.UnaryInterceptor(grpcapi.OperatorKeyInterceptor(cfg.OperatorKey)))
+	gs := grpc.NewServer(grpc.ChainUnaryInterceptor(grpclog.Unary, grpcapi.OperatorKeyInterceptor(cfg.OperatorKey)))
 	newsv1.RegisterNewsServer(gs, grpcapi.New(st, st, objs, cfg, slog.Default()))
 	healthv1.RegisterHealthServer(gs, health.NewServer())
 
@@ -82,7 +84,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	hs := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	hs := &http.Server{Handler: httplog.Middleware(mux), ReadHeaderTimeout: 10 * time.Second}
 	go hs.Serve(hLis)
 	slog.Info("http listening", "addr", cfg.HTTPAddr)
 

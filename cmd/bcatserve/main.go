@@ -15,6 +15,7 @@ import (
 
 	"github.com/openpak/news/internal/bcatcontainer"
 	"github.com/openpak/news/internal/datasetfiles"
+	"github.com/openpak/news/internal/httplog"
 	"github.com/openpak/news/render/nativebcat"
 	"github.com/openpak/news/render/switchbcat"
 )
@@ -79,7 +80,7 @@ func main() {
 	if *check {
 		return
 	}
-	server := &http.Server{Addr: *listen, Handler: mux,
+	server := &http.Server{Addr: *listen, Handler: httplog.Middleware(mux),
 		ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

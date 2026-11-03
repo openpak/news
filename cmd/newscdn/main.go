@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/openpak/news/internal/httplog"
 	"github.com/openpak/news/internal/newsadmin"
 	"github.com/openpak/news/internal/newsexperiment"
 )
@@ -95,7 +96,7 @@ func main() {
 			return nil, nil
 		},
 	}
-	srv := &http.Server{Addr: *listen, Handler: h, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10, TLSConfig: tlsConfig}
+	srv := &http.Server{Addr: *listen, Handler: httplog.Middleware(h), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10, TLSConfig: tlsConfig}
 	// HTTP/2 disallows some of the legacy TLS suites this client needs.
 	srv.TLSNextProto = map[string]func(*http.Server, *tls.Conn, http.Handler){}
 	log.Printf("News fixture server listening on %s", *listen)
@@ -144,7 +145,7 @@ func startAdmin(data, static, importDir string, importShots bool, importManifest
 	if (cfg.SigningKeyPath == "" || cfg.AESKeyPath == "") && cfg.Bcat == nil {
 		slog.Warn("NEWS_SIGNING_KEY / NEWS_AES_KEY not set: publishing is disabled")
 	}
-	admin := &http.Server{Addr: listen, Handler: svc.Handler(adminKey), ReadHeaderTimeout: 5 * time.Second,
+	admin := &http.Server{Addr: listen, Handler: httplog.Middleware(svc.Handler(adminKey)), ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout: time.Minute, WriteTimeout: 5 * time.Minute, IdleTimeout: time.Minute, MaxHeaderBytes: 16 << 10}
 	go func() {
 		log.Printf("News admin API listening on %s (plain HTTP, internal network only)", listen)

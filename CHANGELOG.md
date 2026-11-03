@@ -3,6 +3,9 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.3.0 — 2026-11-03
+- Per-request logging: one slog line per HTTP request (method, path, status, ms) and per gRPC unary call (method, code, ms) on stderr via internal/httplog. Query strings, headers and bodies are never logged; /healthz and /metrics are skipped. Covers news, newscdn (public and admin) and bcatserve.
+
 ## v0.2.6 — 2026-11-02
 
 - The image also ships `/bcatserve`, `/newscdn` (with `cjpeg`) and `/bcat-public.pem`, so the `openpak-bcat` and `openpak-news-experiment` containers run from it. Default entrypoint unchanged.
