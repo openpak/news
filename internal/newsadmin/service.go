@@ -9,7 +9,7 @@
 //	    screenshots/<news_id>.png|jpg, icons/<topic>.png|jpg
 //	<data>/builds/<NNNNNN>/seed/     decoded newsseed output (manifest.json)
 //	<data>/builds/<NNNNNN>/signed/   the signed fixture tree consoles get
-//	<data>/state.json                served build, revision, history
+//	state document                   served build, revision, history (Postgres table news_state; <data>/state.json only without a database)
 //	<data>/import-manifest.json      optional pre-server manifest
 //
 // Publishing rebuilds the seed, signs and verifies it in-process, loads it
@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -71,6 +70,9 @@ type Config struct {
 	AESKeyPath     string // NEWS_AES_KEY
 	SecretIndex    byte
 	VerifyKey      *rsa.PublicKey // nil = OpenPakPublicKey()
+
+	// StateDB holds the state document in Postgres; nil = <DataDir>/state.json.
+	StateDB *StateDB
 
 	KeepBuilds int // default 10, minimum 2
 
@@ -175,12 +177,12 @@ func New(cfg Config) (*Service, error) {
 	if err := os.MkdirAll(filepath.Join(cfg.DataDir, "builds"), 0755); err != nil {
 		return nil, err
 	}
-	raw, err := os.ReadFile(s.statePath())
+	raw, found, err := s.readState()
 	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		s.state = state{NextBuild: 1}
 	case err != nil:
 		return nil, err
+	case !found:
+		s.state = state{NextBuild: 1}
 	default:
 		if err := json.Unmarshal(raw, &s.state); err != nil {
 			return nil, fmt.Errorf("state.json: %w", err)
@@ -213,7 +215,7 @@ func (s *Service) saveState() error {
 	if err != nil {
 		return err
 	}
-	return writeAtomic(s.statePath(), append(raw, '\n'))
+	return s.writeState(append(raw, '\n'))
 }
 
 // serveInitial loads the served build, else the static tree.

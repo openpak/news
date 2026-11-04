@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -133,6 +134,15 @@ func startAdmin(data, static, importDir string, importShots bool, importManifest
 	}
 	if u := os.Getenv("NX_BCAT_SYNC_URL"); u != "" {
 		cfg.Bcat = &newsadmin.BcatSync{URL: u, Key: os.Getenv("NX_INTERNAL_KEY")}
+	}
+	if u := os.Getenv("NEWS_STATE_DATABASE_URL"); u != "" {
+		db, err := newsadmin.OpenStateDB(context.Background(), u)
+		if err != nil {
+			log.Fatalf("state database: %v", err)
+		}
+		cfg.StateDB = db
+	} else {
+		slog.Warn("NEWS_STATE_DATABASE_URL is not set: state is kept in <data>/state.json")
 	}
 	svc, err := newsadmin.New(cfg)
 	if err != nil {

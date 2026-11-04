@@ -3,6 +3,9 @@
 Generated from git history on 2026-09-15. `git log` stays the source
 of truth; this file is the readable summary.
 
+## v0.3.1 — 2026-11-04
+- newscdn keeps its state document (served build, revision, history, push results) in Postgres (table `news_state`, small pool) when `NEWS_STATE_DATABASE_URL` is set; a legacy `<data>/state.json` is imported once if the database has none, and kept. builds/ and channels/ stay files (operator content). Tests need `NEWS_TEST_DATABASE_URL` and skip without it (openpak/prds#85).
+
 ## v0.3.0 — 2026-11-03
 - Per-request logging: one slog line per HTTP request (method, path, status, ms) and per gRPC unary call (method, code, ms) on stderr via internal/httplog. Query strings, headers and bodies are never logged; /healthz and /metrics are skipped. Covers news, newscdn (public and admin) and bcatserve.
 
